@@ -293,6 +293,7 @@ export async function createClient() {
 
 ```typescript
 // lib/supabase/admin.ts — API routes ONLY, NEVER import in components
+import 'server-only'  // MUST be the first line — build error if imported client-side (Pitfall 4)
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 export function createAdminClient() {
@@ -578,13 +579,19 @@ export async function saveAcademiaConfig(formData: unknown) {
 
   const supabase = await createClient()
 
-  // fn_tenant_id() is resolved by PostgreSQL RLS — no tenant_id in app code
+  // Resolve tenant_id server-side. RLS WITH CHECK only VALIDATES tenant_id; it
+  // does NOT inject it. academia_config.tenant_id is NOT NULL, so the row MUST
+  // carry it or the INSERT fails the NOT NULL constraint.
+  const { data: tenantId } = await supabase.rpc('fn_tenant_id')
+  if (!tenantId) {
+    return { error: 'Não foi possível identificar a academia. Recarregue e tente novamente.' }
+  }
+
   const { error } = await supabase
     .from('academia_config')
     .upsert({
       ...parsed.data,
-      // tenant_id is NOT set here — it comes from fn_tenant_id() via RLS WITH CHECK
-      // The RLS policy enforces tenant_id = fn_tenant_id() on INSERT
+      tenant_id: tenantId,  // set ONLY from fn_tenant_id() server-side, never the client payload
     }, { onConflict: 'tenant_id' })
 
   if (error) return { error: error.message }
@@ -594,7 +601,7 @@ export async function saveAcademiaConfig(formData: unknown) {
 }
 ```
 
-**Note:** Because `academia_config` has `tenant_id NOT NULL` and the RLS `WITH CHECK` enforces `tenant_id = fn_tenant_id()`, the `INSERT` will fail unless the app provides the correct `tenant_id`. Two approaches: (a) read `fn_tenant_id()` via a separate RPC call and include it, or (b) use a RPC that sets it internally. Approach (a) is simpler: call `supabase.rpc('fn_tenant_id')` at the start of the Server Action and include the result. [ASSUMED — verify approach with a test SQL query before coding]
+**Note:** `academia_config.tenant_id` is `NOT NULL`. RLS `WITH CHECK` only **validates** that the supplied `tenant_id` equals `fn_tenant_id()` — it does **not** inject it. The Server Action MUST call `supabase.rpc('fn_tenant_id')` and include the returned id in the upsert payload (shown above). Omitting it fails the NOT NULL constraint. [RESOLVED — verified: WITH CHECK validates, never injects]
 
 ### Zod Schema for Academia Config
 
@@ -687,19 +694,19 @@ $$;
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Fundador flag: who sets it?**
+1. **Fundador flag: who sets it?** — RESOLVED: defaults false in trigger; set manually by admin
    - What we know: `tenants.fundador BOOLEAN` determines 50% discount for first 6 months; policy targets first 10 tenants
    - What's unclear: Is this set automatically (trigger checks row count ≤ 10) or manually by admin?
    - Recommendation: For Phase 1, default to `false` in trigger; add a migration later to flip it manually for actual first 10 tenants. No admin UI needed in Phase 1.
 
-2. **Invite flow: do managers receive a Supabase invite email or a custom email?**
+2. **Invite flow: do managers receive a Supabase invite email or a custom email?** — RESOLVED: Supabase default email; custom branding Phase 2+
    - What we know: `admin.inviteUserByEmail` sends Supabase's default invite email
    - What's unclear: Does the product require custom email branding in Phase 1?
    - Recommendation: Use Supabase default invite email for Phase 1 MVP; custom email templates are a Phase 2+ concern.
 
-3. **academia_config.horarios / planos: textarea string or structured JSON?**
+3. **academia_config.horarios / planos: textarea string or structured JSON?** — RESOLVED: {"text": "<textarea_value>"} JSON wrapper for Phase 1
    - What we know: Schema defines both as `JSONB`; UI spec shows both as textarea inputs
    - What's unclear: Is free-text stored directly as a JSON string scalar, or parsed into an object?
    - Recommendation: Store as `{"text": "<textarea value>"}` JSON wrapper for Phase 1; structured schema is a future migration.
