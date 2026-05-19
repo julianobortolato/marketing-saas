@@ -1,11 +1,31 @@
 # CLAUDE.md — marketing-saas
 > Instruções para o agente Code. Ler antes de qualquer ação.
-> Versão 1.0 — 18/mai/2026
+> Versão 1.1 — 19/mai/2026
 
 ## Contexto do projeto
 
 SaaS de marketing autônomo para academias. CMO IA 24/7.
 Stack: Next.js 14 App Router + Supabase + Evolution API + OpenAI + Vercel.
+**Primeiro cliente:** Fitness UNIC (fitnessacademia.com.br) — academia do fundador.
+
+## Identidade visual
+
+**Fonte de verdade:** `Downloads/Marketing SaaS/Manual Identidade Visual Fitness UNIC _LOGO E CORES.md`
+
+O SaaS usa a identidade visual da Fitness UNIC — não há marca separada ("Prisma" é referência de outro projeto, ignorar).
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--color-primary` | `#E30613` | CTAs, botões de ação, bordas de destaque |
+| `--color-bg` | `#FFFFFF` | Fundo principal |
+| `--color-surface` | `#F8FAFC` | Cards, painéis |
+| `--color-text` | `#0F172A` | Texto principal |
+| `--color-muted` | `#64748B` | Labels, textos secundários |
+| `--color-border` | `#E2E8F0` | Bordas e divisores |
+
+**Regra 60-30-10:** 60% branco/cinza-gelo · 30% cinza médio/neutro · 10% vermelho `#E30613`
+**Fontes:** sans-serif moderna (Inter ou Geist) — títulos em maiúsculas bold, textos em normal
+**Estilo:** Clean & Powerful — vermelho aparece só em CTAs e destaques, nunca como fundo extenso
 
 ## Regras inegociáveis
 
