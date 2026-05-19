@@ -65,7 +65,8 @@ export function AppShell({ usuario, children }: AppShellProps) {
         <nav className="flex-1 py-2" aria-label="Menu">
           <NavItem href="/dashboard/overview" label="Visao Geral" />
           <NavItem href="/dashboard/configuracoes" label="Configuracoes" />
-          <NavItem href="/dashboard/leads" label="Leads" disabled />
+          <NavItem href="/dashboard/leads" label="Leads" />
+          <NavItem href="/dashboard/aprovacoes" label="Aprovacoes" />
           <NavItem href="/dashboard/conteudo" label="Conteudo" disabled />
           <NavItem href="/dashboard/campanhas" label="Campanhas" disabled />
           <NavItem href="/dashboard/inteligencia" label="Inteligencia" disabled />
