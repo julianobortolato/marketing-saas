@@ -3,7 +3,7 @@ phase: 01-foundation
 plan: 02
 type: execute
 wave: 1
-depends_on: ["01-01"]
+depends_on: ["01"]
 files_modified:
   - app/(auth)/signup/page.tsx
   - app/(auth)/login/page.tsx
@@ -68,7 +68,7 @@ Output: Two working auth screens matching the UI-SPEC contract, shared validatio
 @.planning/phases/01-foundation/01-RESEARCH.md
 
 <interfaces>
-<!-- From Plan 01 (01-01-SUMMARY.md). Use directly — do not re-derive. -->
+<!-- From Plan 01 (01-SUMMARY.md). Use directly — do not re-derive. -->
 
 lib/supabase/client.ts:
   function createClient(): SupabaseClient   // 'use client' only
@@ -211,5 +211,5 @@ The logged-in -> redirect-away rule is already enforced by Plan 01 middleware; d
 </success_criteria>
 
 <output>
-Create `.planning/phases/01-foundation/01-02-SUMMARY.md` when done.
+Create `.planning/phases/01-foundation/02-SUMMARY.md` when done.
 </output>

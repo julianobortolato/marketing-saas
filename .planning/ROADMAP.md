@@ -12,7 +12,7 @@ Six phases that build the autonomous CMO SaaS for gyms from the ground up: secur
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Auth, multi-tenant isolation, academia DNA config, and role-based access
+- [x] **Phase 1: Foundation** - Auth, multi-tenant isolation, academia DNA config, and role-based access (completed 2026-05-19)
 - [ ] **Phase 2: Lead Pipeline + Aprovacoes** - Webhook lead ingestion, lead panel, manual entry, and approval queue
 - [ ] **Phase 3: Agente WhatsApp** - Automated < 5 min response, AE scheduling, and human handoff
 - [ ] **Phase 4: Conteudo** - Video upload, AI content generation, preview, and Instagram publish
@@ -31,12 +31,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Signing up automatically creates a tenant with slug, plan, and billing fields; `fn_calcular_mensalidade()` is callable
   3. Owner can fill in the academia DNA form (bairro, raio_km, tom de voz, diferenciais, horarios, planos) and see it saved
   4. An invited manager can log in and access the dashboard; a viewer cannot perform write actions; tenant A cannot read tenant B's data
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 Plans:
-- [ ] 01-PLAN-01.md — Walking Skeleton: scaffold + pinned deps + shadcn brand + 3 Supabase clients + 5 migrations + schema push (FOUND-01 infra, FOUND-02)
-- [ ] 01-PLAN-02.md — Auth slice: /signup + /login wired to Supabase Auth, session persistence (FOUND-01)
-- [ ] 01-PLAN-03.md — Academia DNA slice: /configuracoes form + Server Action upsert, server-enforced tenant_id (FOUND-03)
-- [ ] 01-PLAN-04.md — Role-based access slice: dashboard shell + overview + server-only invite API + tenant isolation (FOUND-04)
+- [x] 01-PLAN-01.md — Walking Skeleton: scaffold + pinned deps + shadcn brand + 3 Supabase clients + 5 migrations + schema push (FOUND-01 infra, FOUND-02)
+- [x] 01-PLAN-02.md — Auth slice: /signup + /login wired to Supabase Auth, session persistence (FOUND-01)
+- [x] 01-PLAN-03.md — Academia DNA slice: /configuracoes form + Server Action upsert, server-enforced tenant_id (FOUND-03)
+- [x] 01-PLAN-04.md — Role-based access slice: dashboard shell + overview + server-only invite API + tenant isolation (FOUND-04)
 **UI hint:** yes
 
 ### Phase 2: Lead Pipeline + Aprovacoes
@@ -108,7 +108,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/4 | Ready to execute | - |
+| 1. Foundation | 4/4 | Complete   | 2026-05-19 |
 | 2. Lead Pipeline + Aprovacoes | 0/TBD | Not started | - |
 | 3. Agente WhatsApp | 0/TBD | Not started | - |
 | 4. Conteudo | 0/TBD | Not started | - |

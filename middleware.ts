@@ -33,19 +33,28 @@ export async function middleware(request: NextRequest) {
 
   const isProtected = pathname.startsWith('/dashboard')
   const isAuthRoute = pathname === '/login' || pathname === '/signup'
+  const isHome = pathname === '/'
 
   // Logged-out users cannot access /dashboard/* — redirect to /login
   if (isProtected && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
+    const redirectResponse = NextResponse.redirect(url)
+    supabaseResponse.cookies.getAll().forEach((cookie) =>
+      redirectResponse.cookies.set(cookie)
+    )
+    return redirectResponse
   }
 
-  // Logged-in users should not linger on auth routes — redirect to dashboard
-  if (isAuthRoute && user) {
+  // Logged-in users should not linger on auth routes or home — redirect to dashboard
+  if ((isAuthRoute || isHome) && user) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard/overview'
-    return NextResponse.redirect(url)
+    const redirectResponse = NextResponse.redirect(url)
+    supabaseResponse.cookies.getAll().forEach((cookie) =>
+      redirectResponse.cookies.set(cookie)
+    )
+    return redirectResponse
   }
 
   return supabaseResponse

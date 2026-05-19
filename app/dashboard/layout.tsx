@@ -28,9 +28,9 @@ export default async function DashboardLayout({
   const usuario = await getCurrentUsuario()
 
   if (!usuario) {
-    // Edge case: auth user exists but no usuarios row yet (trigger delay).
-    // Redirect to login to re-authenticate cleanly.
-    redirect('/login')
+    // Auth user exists but no usuarios row — signout to clear session before /login,
+    // otherwise the middleware bounces back to /dashboard and creates a redirect loop.
+    redirect('/api/auth/signout')
   }
 
   return <AppShell usuario={usuario}>{children}</AppShell>

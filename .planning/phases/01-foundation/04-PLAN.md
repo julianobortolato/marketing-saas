@@ -3,7 +3,7 @@ phase: 01-foundation
 plan: 04
 type: execute
 wave: 1
-depends_on: ["01-01"]
+depends_on: ["01"]
 files_modified:
   - app/(dashboard)/layout.tsx
   - app/(dashboard)/overview/page.tsx
@@ -73,7 +73,7 @@ Output: A working dashboard shell with role badge, an invite API using the servi
 @.planning/phases/01-foundation/01-RESEARCH.md
 
 <interfaces>
-<!-- From Plan 01 (01-01-SUMMARY.md). Use directly. -->
+<!-- From Plan 01 (01-SUMMARY.md). Use directly. -->
 
 lib/supabase/server.ts:  async createClient(): Promise<SupabaseClient>   // Server Components
 lib/supabase/admin.ts:   createAdminClient(): SupabaseClient             // API routes ONLY (import 'server-only')
@@ -238,6 +238,6 @@ Return 200 `{ success: true }` or the appropriate 4xx with a JSON error. Service
 </success_criteria>
 
 <output>
-Create `.planning/phases/01-foundation/01-04-SUMMARY.md` when done.
+Create `.planning/phases/01-foundation/04-SUMMARY.md` when done.
 Document the invite/trigger reconciliation as a known Phase 1 simplification in the SUMMARY.
 </output>

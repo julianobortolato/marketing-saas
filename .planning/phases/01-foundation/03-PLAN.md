@@ -3,7 +3,7 @@ phase: 01-foundation
 plan: 03
 type: execute
 wave: 1
-depends_on: ["01-01"]
+depends_on: ["01"]
 files_modified:
   - app/(dashboard)/configuracoes/page.tsx
   - app/(dashboard)/configuracoes/config-form.tsx
@@ -75,7 +75,7 @@ Output: A working, brand-accurate DNA form that saves and reloads correctly, wit
 @ARCHITECTURE.md
 
 <interfaces>
-<!-- From Plan 01 (01-01-SUMMARY.md). Use directly. -->
+<!-- From Plan 01 (01-SUMMARY.md). Use directly. -->
 
 lib/supabase/server.ts:
   async function createClient(): Promise<SupabaseClient>   // Server Components / Server Actions
@@ -227,5 +227,5 @@ Create `app/(dashboard)/configuracoes/actions.ts` (`'use server'`): `saveAcademi
 </success_criteria>
 
 <output>
-Create `.planning/phases/01-foundation/01-03-SUMMARY.md` when done.
+Create `.planning/phases/01-foundation/03-SUMMARY.md` when done.
 </output>

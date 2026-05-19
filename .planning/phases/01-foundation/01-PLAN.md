@@ -321,6 +321,6 @@ Tasks 1-3 produced a building Next.js project, three Supabase clients, session m
 </success_criteria>
 
 <output>
-Create `.planning/phases/01-foundation/01-01-SUMMARY.md` when done.
+Create `.planning/phases/01-foundation/01-SUMMARY.md` when done.
 Also create `.planning/phases/01-foundation/01-SKELETON.md` (Walking Skeleton contract) — see Task scope; populate from the skeleton-template structure referenced in `<context>`.
 </output>
