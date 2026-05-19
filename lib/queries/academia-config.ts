@@ -28,7 +28,6 @@ export async function getAcademiaConfig(): Promise<AcademiaConfigRow | null> {
     .maybeSingle()
 
   if (error) {
-    // Surface errors to Server Component — do not swallow
     console.error('[getAcademiaConfig] error:', error.message)
     return null
   }
