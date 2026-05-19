@@ -11,4 +11,8 @@ export const academiaConfigSchema = z.object({
   planos: z.string().optional(),
 })
 
+// Output type (after defaults applied) — used in Server Actions and typed results
 export type AcademiaConfigInput = z.infer<typeof academiaConfigSchema>
+
+// Input type (before defaults — matches what react-hook-form sends)
+export type AcademiaConfigFormValues = z.input<typeof academiaConfigSchema>
