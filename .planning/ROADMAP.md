@@ -50,7 +50,12 @@ Plans:
   3. Owner can add a lead manually by entering name, phone, and origin from the dashboard
   4. Owner can see a weekly batch of up to 10 organic posts and approve or reject them in one action
   5. No paid campaign can be published without an explicit per-campaign approval record in `aprovacoes`
-**Plans:** TBD
+**Plans:** 4 plans
+Plans:
+- [ ] 02-01-PLAN.md — Schema slice: leads + aprovacoes migrations + RLS dual-policy + grants + [BLOCKING] db push (LEAD-01..03, APROV-01..02)
+- [ ] 02-02-PLAN.md — Webhook slice: POST /api/webhooks/leads with HMAC signature validation + token-derived tenant (LEAD-01)
+- [ ] 02-03-PLAN.md — Lead panel slice: /dashboard/leads filterable list + manual status change + manual entry (LEAD-02, LEAD-03)
+- [ ] 02-04-PLAN.md — Aprovacoes slice: /dashboard/aprovacoes weekly batch (<=10) approve/reject + assertCampaignApproved gate (APROV-01, APROV-02)
 **UI hint:** yes
 
 ### Phase 3: Agente WhatsApp
@@ -109,7 +114,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete   | 2026-05-19 |
-| 2. Lead Pipeline + Aprovacoes | 0/TBD | Not started | - |
+| 2. Lead Pipeline + Aprovacoes | 0/4 | Not started | - |
 | 3. Agente WhatsApp | 0/TBD | Not started | - |
 | 4. Conteudo | 0/TBD | Not started | - |
 | 5. Campanhas | 0/TBD | Not started | - |
