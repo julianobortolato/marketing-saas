@@ -3,7 +3,7 @@ phase: 02-lead-pipeline-aprovacoes
 plan: "04"
 type: execute
 wave: 1
-depends_on: ["01"]
+depends_on: ["01", "03"]
 files_modified:
   - app/dashboard/aprovacoes/page.tsx
   - app/dashboard/aprovacoes/batch-approval.tsx
