@@ -63,12 +63,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal:** Owner uploads raw video and the system generates ready-to-use social content; owner previews and approves before Instagram publishing
 **Mode:** mvp
 **Depends on:** Phase 1
+**Parallel:** Can run in parallel with Phase 3 if Instagram API approval is delayed
 **Requirements:** CONT-01, CONT-02, CONT-03, CONT-04
 **Success Criteria** (what must be TRUE):
   1. Owner can upload a raw video file from the dashboard without leaving the app
   2. After upload, the system generates copy, hashtags, and a channel strategy (Instagram Feed, Stories, Reels) using the academia DNA
   3. Owner can preview the generated content and approve or reject it before any external action is taken
   4. Approved content is published to the connected Instagram account via Meta Graph API and a confirmation is shown in the dashboard
+**Contingency — Instagram API delay:** Phase 4 ships CONT-01..03 (upload + AI generation + preview) as a complete working slice without publishing. CONT-04 enters as a patch once Meta Graph API access is approved.
 **Plans:** TBD
 **UI hint:** yes
 
