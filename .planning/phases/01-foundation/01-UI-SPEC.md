@@ -59,13 +59,11 @@ Font family: `Inter, ui-sans-serif, system-ui` via `next/font/google` — loaded
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Body | 16px / `text-base` | 400 (regular) | 1.5 | Form labels, paragraph text, descriptions |
-| Label | 14px / `text-sm` | 500 (medium) | 1.4 | Input labels, table headers, nav items, role badges |
+| Label | 14px / `text-sm` | 400 (regular) | 1.4 | Input labels, table headers, nav items, role badges |
 | Heading | 20px / `text-xl` | 700 (bold) | 1.2 | Page titles (h1), card section titles (h2), form section headers |
-| Display | 28px / `text-3xl` | 800 (extrabold) | 1.1 | Auth page headline only ("Seu CMO autônomo começa aqui") |
+| Display | 28px / `text-3xl` | 700 (bold) | 1.1 | Auth page headline only ("Seu CMO autônomo começa aqui") |
 
-**Capitalization rule:** Headings in the dashboard use `uppercase tracking-wide` (Tailwind `uppercase tracking-wider`) — mirrors Fitness UNIC brand style ("títulos em maiúsculas bold"). Auth page display headline is sentence case only.
-
-Maximum weights in use: 2 (400 regular + 700 bold). The 500 medium and 800 extrabold are scoped to Label role and auth Display only, counted as functional sub-variants.
+**Capitalization rule:** Headings in the dashboard use `uppercase tracking-wide` (Tailwind `uppercase tracking-wider`) — mirrors Fitness UNIC brand style ("títulos em maiúsculas bold"). Auth page display headline is sentence case only. Size difference (14px vs 16px) and uppercase transforms provide sufficient visual hierarchy between roles without additional weights.
 
 ---
 
@@ -82,17 +80,17 @@ Brand palette from CLAUDE.md § "Identidade visual":
 | Text muted | `#64748B` — `--color-muted` | Secondary labels, helper text, placeholder text |
 | Destructive | `#DC2626` (Tailwind `red-600`) | Danger/delete confirmation dialog confirm button only |
 
-**Accent `#E30613` reserved for:**
-1. Primary CTA buttons (Sign up, Entrar, Salvar configuracoes) — filled background
-2. Form validation success indicator border (input outline on valid state)
-3. Active nav item left-border indicator in sidebar
-4. "Required field" asterisk (`*`) in academia DNA form
+**Accent `#E30613` reserved for exactly 3 uses:**
+1. Primary CTA buttons (Criar conta, Entrar na conta, Salvar configurações) — filled background
+2. Active nav item left-border indicator in sidebar
+3. "Required field" asterisk (`*`) in academia DNA form
 
 **Accent is NOT used for:**
 - Page backgrounds or section fills
 - Hover states on non-CTA elements
 - Informational badges or status chips
 - Error states (use `#DC2626` destructive instead)
+- Valid-state input borders (use `#16A34A` green-600 for valid/success input outline)
 
 **Tailwind CSS variable override** in `src/app/globals.css`:
 ```css
@@ -130,12 +128,12 @@ Phase 1 delivers 4 distinct screens:
 
 **Elements (top to bottom):**
 1. Logo mark — Fitness UNIC wordmark, centered, 32px height
-2. Display heading: "Seu CMO autônomo começa aqui" — 28px extrabold, sentence case, `#0F172A`
+2. Display heading: "Seu CMO autônomo começa aqui" — 28px bold, sentence case, `#0F172A`
 3. Subheading: "Crie sua conta e configure sua academia em minutos." — 16px regular, `#64748B`
 4. Email input — label "E-mail", type email, placeholder "voce@academia.com.br"
 5. Password input — label "Senha", type password, placeholder "Mínimo 8 caracteres", toggle visibility icon
-6. Primary CTA button — "Criar conta" — full-width, `#E30613` background, white text, 16px semibold, 44px height
-7. Divider: "Já tem conta?" + link "Entrar" → `/login`
+6. Primary CTA button — "Criar conta" — full-width, `#E30613` background, white text, 16px bold, 44px height
+7. Divider: "Já tem conta?" + link "Entrar na conta" → `/login`
 
 **States:**
 - Loading: button shows spinner (lucide `Loader2` with `animate-spin`), disabled, text changes to "Criando conta..."
@@ -151,7 +149,7 @@ Phase 1 delivers 4 distinct screens:
 2. Heading: "Bem-vindo de volta" — 20px bold, uppercase, `#0F172A`
 3. Email input — same as signup
 4. Password input — same as signup + "Esqueceu sua senha?" link (14px, `#64748B`) aligned right below input
-5. Primary CTA button — "Entrar" — full-width, `#E30613`, 44px height
+5. Primary CTA button — "Entrar na conta" — full-width, `#E30613`, 44px height
 6. Divider: "Ainda não tem conta?" + link "Criar conta" → `/signup`
 
 **States:** Same loading/error pattern as signup.
@@ -169,7 +167,7 @@ Phase 1 delivers 4 distinct screens:
 - Bottom: user avatar initial + email truncated + role badge
 
 **Role badge styles:**
-- `owner` — `#0F172A` background, white text, 12px medium uppercase
+- `owner` — `#0F172A` background, white text, 12px regular uppercase
 - `manager` — `#334155` background, white text
 - `viewer` — `#F1F5F9` background, `#64748B` text, border `#E2E8F0`
 
@@ -178,7 +176,7 @@ Phase 1 delivers 4 distinct screens:
 - Welcome card (shown when `academia_config` is empty): surface card `#F8FAFC`, border `#E2E8F0`, padding 24px
   - Heading: "Configure o DNA da sua academia" — 20px bold
   - Body: "Para que o CMO autônomo trabalhe por você, precisamos conhecer sua academia." — 16px regular `#64748B`
-  - CTA: "Configurar agora" — `#E30613` button → `/dashboard/configuracoes`
+  - CTA: "Configurar academia" — `#E30613` button → `/dashboard/configuracoes`
 - Summary cards row (shown when `academia_config` exists): 3 cards side-by-side, surface bg, 16px padding, 8px border-radius. Phase 1 cards show "0" counters as placeholders for Leads, Agendamentos, Conteudos.
 
 ### `/dashboard/configuracoes` — Academia DNA form
@@ -209,9 +207,9 @@ Phase 1 delivers 4 distinct screens:
 - "Planos oferecidos" — textarea, 4 rows, placeholder "Ex: Mensal R$120, Trimestral R$300, Anual R$900"
 
 **Form footer (sticky on mobile, static on desktop):**
-- "Salvar configuracoes" — `#E30613` button, 160px min-width, right-aligned
+- "Salvar configurações" — `#E30613` button, 160px min-width, right-aligned
 - Loading state: "Salvando..." + spinner, disabled
-- Success state: inline success message below button (not toast) "Configuracoes salvas com sucesso." — `#16A34A` (green-600), 14px, disappears after 3 seconds
+- Success state: inline success message below button (not toast) "Configurações salvas com sucesso." — `#16A34A` (green-600), 14px, disappears after 3 seconds
 
 ---
 
@@ -220,7 +218,8 @@ Phase 1 delivers 4 distinct screens:
 ### Form validation
 
 - Validation fires on `onBlur` for each field (not on every keystroke)
-- Required fields show error on blur if empty: red border (`#E30613` → use destructive `#DC2626` for errors), red helper text 14px below input
+- Required fields show error on blur if empty: red border (`#DC2626`), red helper text 14px below input
+- Valid-state input border (on successful blur): `#16A34A` (green-600) outline — not accent red
 - Form submit button disabled until all required fields (`*`) are non-empty
 - No full-page validation summary — errors are inline, field-level only
 
@@ -252,7 +251,7 @@ Viewer enforcement: form fields use `readOnly` attribute, save button conditiona
 
 | Screen | Empty State |
 |--------|-------------|
-| `/dashboard/overview` — no DNA configured | Welcome card with "Configurar agora" CTA (see screen inventory above) |
+| `/dashboard/overview` — no DNA configured | Welcome card with "Configurar academia" CTA (see screen inventory above) |
 | `/dashboard/overview` — DNA configured, no leads yet | 3 placeholder counter cards showing "0" with muted labels |
 | `/dashboard/configuracoes` — first load | Pre-filled with defaults: raio_km = 5, tom_de_voz = "neutro" |
 
@@ -263,16 +262,17 @@ Viewer enforcement: form fields use `readOnly` attribute, save button conditiona
 | Element | Copy | Notes |
 |---------|------|-------|
 | Signup primary CTA | "Criar conta" | Verb + noun, imperative |
-| Login primary CTA | "Entrar" | Single word, direct |
-| DNA form save CTA | "Salvar configuracoes" | Verb + noun |
+| Login primary CTA | "Entrar na conta" | Verb + noun, imperative |
+| DNA form save CTA | "Salvar configurações" | Verb + noun |
+| Overview welcome CTA | "Configurar academia" | Verb + noun, imperative |
 | Auth display headline | "Seu CMO autônomo começa aqui" | Aspirational, sentence case |
 | Auth subheading | "Crie sua conta e configure sua academia em minutos." | Benefit-first |
 | Signup loading | "Criando conta..." | Progressive gerund |
 | Login loading | "Entrando..." | Progressive gerund |
 | Save loading | "Salvando..." | Progressive gerund |
-| Save success | "Configuracoes salvas com sucesso." | Declarative, green text inline |
-| Required field error (empty) | "Campo obrigatorio." | Short, unambiguous |
-| Required field error (email format) | "Informe um e-mail valido." | Specific to error type |
+| Save success | "Configurações salvas com sucesso." | Declarative, green text inline |
+| Required field error (empty) | "Campo obrigatório." | Short, unambiguous |
+| Required field error (email format) | "Informe um e-mail válido." | Specific to error type |
 | Password too short | "A senha deve ter pelo menos 8 caracteres." | — |
 | Auth error (wrong credentials) | "E-mail ou senha incorretos. Verifique e tente novamente." | No specifics about which field is wrong (security) |
 | Overview welcome heading | "Configure o DNA da sua academia" | Directive, outcome-oriented |
