@@ -7,7 +7,7 @@
 | Termo | Significado no sistema |
 |---|---|
 | **Academia** | Um tenant. Cada academia é isolada por `tenant_id`. |
-| **DNA da academia** | Tabela `academia_config` — tom de voz, bairro, diferenciais, planos, horários. |
+| **DNA da academia** | Tabela `academia_config` — tom de voz, bairro, diferenciais, planos, horários, identidade visual (`tema` JSONB). É tenant content — nunca em código. |
 | **Lead** | Registro em `leads`. Pessoa que demonstrou interesse mas ainda não é aluno. |
 | **AE (Aula Experimental)** | Evento de conversão. Lead agendado → status `agendado` em `leads`. |
 | **Tráfego local** | Campanhas Google/Meta com raio de 5km a partir do endereço da academia. |

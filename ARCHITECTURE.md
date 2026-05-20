@@ -28,6 +28,12 @@ marketing-saas/
 │   ├── STATE.md
 │   └── ROADMAP.md
 ├── scripts/                      # seeds, migrations, utilitários
+├── docs/
+│   └── principles/               # princípios universais por arquivo
+│       └── ENGINE_VS_TENANT.md
+├── .adrs/                        # ADRs locais do repo
+│   ├── ADR-MKT-000.md            # fronteira engine vs tenant
+│   └── ADR-MKT-001-agente-whatsapp.md  # agente WhatsApp Fase 3
 ├── CLAUDE.md                     # instruções para o agente Code
 ├── PRD.md
 ├── ARCHITECTURE.md (este)
@@ -60,6 +66,12 @@ marketing-saas/
 **Decisão:** Next.js API Routes → OpenAI diretamente. Sem LangChain, sem framework de agentes.
 **Motivo:** Menos abstração = menos bugs. Orquestração simples em MVP não justifica overhead.
 **Revisão:** quando número de agentes > 5 ou contexto > 32k tokens por operação.
+
+### ADR-006 — Fronteira engine vs tenant
+**Decisão:** Código, prompts e configurações de repositório não conhecem nenhum tenant específico. Tudo que varia por tenant vive em `academia_config` ou `tenants`.
+**Motivo:** Evita que o primeiro cliente vire identidade do produto — padrão que gerou débitos críticos no IARA V2.
+**Documento canônico:** `docs/principles/ENGINE_VS_TENANT.md`
+**Aplicação local:** `.adrs/ADR-MKT-000.md`
 
 ## Schema — tabelas core
 
@@ -134,6 +146,8 @@ academia_config (
   diferenciais    TEXT[],
   horarios        JSONB,
   planos          JSONB,
+  tema            JSONB,              -- identidade visual do tenant
+                                      -- {primary, secondary, font, logo_url}
   criado_em       TIMESTAMPTZ DEFAULT now()
 )
 ```
