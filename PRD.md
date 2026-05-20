@@ -68,3 +68,9 @@ SaaS que atua como CMO autônomo 24/7: automatiza tráfego local, criação de c
 | **Starter** | 1 unidade, < 200 alunos | 1 tenant |
 | **Pro** | 200-500 alunos | 3 tenants |
 | **Enterprise** | Redes e franquias | Ilimitado |
+
+## Backlog pós-MVP
+
+| Item | Descrição |
+|---|---|
+| **S-AUDIT** | Rodar auditoria `ENGINE_VS_TENANT.md` §"Como auditar" antes de provisionar segundo tenant — `grep` Camada 1 em `lib/`, `components/`, `prompts/` |
