@@ -1,6 +1,6 @@
 # CLAUDE.md — marketing-saas
 > Instruções para o agente Code. Ler antes de qualquer ação.
-> Versão 1.1 — 19/mai/2026
+> Versão 1.2 — 20/mai/2026
 
 ## Contexto do projeto
 
@@ -10,29 +10,53 @@ Stack: Next.js 14 App Router + Supabase + Evolution API + OpenAI + Vercel.
 
 ## Identidade visual
 
-**Modelo:** B parcial — dashboard com marca do SaaS, saída externa (WhatsApp,
-conteúdo) com identidade do tenant.
+O SaaS é multi-tenant. **Não existe uma "marca do produto" hardcoded em código** — toda
+identidade visual (cores, tipografia, logo) é configurada por tenant.
 
-**Dashboard (engine):** design system neutro — tokens em `tailwind.config` sem
-cor de tenant. Paleta base: branco, cinzas, 1 cor de acento do SaaS (a definir
-quando SaaS tiver marca própria).
+### Onde mora a configuração de tema
 
-**Saída externa (tenant content):** lida de `academia_config.tema` em runtime.
-Estrutura esperada em `academia_config.tema`:
-```json
-{
-  "primary": "#E30613",
-  "secondary": "#0F172A",
-  "font": "Inter",
-  "logo_url": "https://..."
-}
-```
+Tema visual vive nas colunas `academia_config.tema_*` (paleta, tipografia, URL do logo,
+slogan). Migration que cria essas colunas faz parte do Sprint 1 (mesmo que a UI só
+consuma no Sprint 3 — schema pronto antes da primeira tela).
 
-**Seed da UNIC:** inserir como registro em `academia_config.tema` no script de
-seed — não como constante em código.
+### Tenant seed: Fitness UNIC
 
-**Princípio:** `docs/principles/ENGINE_VS_TENANT.md`
-**ADR local:** `.adrs/ADR-MKT-000.md`
+O primeiro tenant é a Fitness UNIC, cliente piloto. As cores, tipografia e elementos
+visuais documentados em `Manual Identidade Visual.md` (ou caminho equivalente) são
+**dados de seed** desse tenant — não constantes do produto. Esses valores são inseridos
+em `academia_config` no provisionamento da UNIC, exatamente como serão inseridos os
+valores da próxima academia, da próxima, e assim por diante.
+
+### Como componentes consomem tema
+
+Componentes compartilhados (`components/`) **nunca** referenciam valor de tenant
+direto. Padrão obrigatório:
+
+- CSS variables carregadas no boot da rota `(dashboard)/[tenant_slug]/...` a partir
+  de `academia_config.tema_*`
+- Componentes consomem via `var(--brand-primary)`, `var(--font-display)` etc.
+- Tema fallback (para rotas públicas pré-login) é um tema neutro do produto, não as
+  cores de nenhum tenant específico
+
+### Anti-padrões — PR rejeitada
+
+| Padrão proibido | Substituto correto |
+|---|---|
+| `bg-[#E30613]` ou qualquer hex de tenant em componente | `bg-[var(--brand-primary)]` |
+| `font-family: 'Fonte-da-UNIC'` em CSS global | `font-family: var(--font-display)` |
+| Import direto de logo de tenant em componente | `<img src={tenant.logo_url} />` |
+| String "Fitness UNIC" hardcoded em copy de UI compartilhada | `{tenant.nome}` resolvido em runtime |
+| Constante "neutra" com valor de tenant: `export const COR_PADRAO = '#E30613'` | Mover para `academia_config.tema_primary` |
+
+### Princípio fundante
+
+Esta seção operacionaliza o princípio universal `docs/principles/ENGINE_VS_TENANT.md`
+aplicado no `.adrs/ADR-MKT-000-engine-vs-tenant.md`. Em caso de dúvida sobre se algo
+pertence a `lib/` ou a `academia_config`, ler primeiro o princípio.
+
+Teste mental: substituir "Fitness UNIC" por "Academia Genérica X". Se o componente
+quebra, fica estranho, ou perde sentido visual — há vazamento de identidade Camada 1,
+PR rejeitada.
 
 ## Regras inegociáveis
 

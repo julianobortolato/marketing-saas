@@ -1,202 +1,243 @@
-# ENGINE_VS_TENANT — Fronteira entre engine e conteúdo do tenant
+# ENGINE vs TENANT — Princípio de separação em SaaS multi-tenant
 
-> **Status:** Ativo
-> **Versão:** 1.0 — 20/mai/2026
-> **Autor:** Juliano Bortolato
+> **Tipo:** princípio universal, portável entre projetos
+> **Versão:** v1.0 — 20/mai/2026
 > **Localização canônica:** `docs/principles/ENGINE_VS_TENANT.md`
-> **Aplicações registradas:** ADR-MKT-000 · ADR-V2-000
+> **Owner:** Juliano Bortolato
+> **Aplicações conhecidas:** `.adrs/ADR-MKT-000.md` (greenfield), `.adrs/ADR-V2-000.md` (brownfield)
+> **Origem:** autópsia do IARA V2 (mai/2026) — débito de identidade UNIC vazado em engine compartilhado
 
 ---
 
-## 1. O princípio (cabe num post-it)
+## Como usar este documento
 
-> **Código de engine não conhece nenhum tenant. Tudo que varia por tenant vive no banco — nunca em código, prompt hardcoded ou arquivo de configuração do repositório.**
+Princípio destilado, portável, focado em **uma dimensão única**: a fronteira entre código que processa (engine) e conteúdo que define um cliente específico (tenant). Convive lado a lado com outros princípios universais em `docs/principles/`, cada um com foco próprio (LLM-first, observability, billing, etc.).
 
----
-
-## 2. Definições
-
-| Termo | Definição | Exemplos |
-|---|---|---|
-| **Engine** | Código, prompts-template, guardrails e configurações que vivem no repositório e são iguais pra todos os tenants | `lib/agents/`, `app/api/webhooks/`, migrations, system prompt com `{placeholders}` |
-| **Tenant content** | Tudo que pertence a um tenant específico e varia entre tenants | Nome da academia, tom de voz, cores, argumentos de venda, palavras proibidas, logo, planos, horários |
-| **Fronteira** | O ponto onde engine para e tenant content começa | Leitura de `academia_config` / `tenants` no início de cada operação — a partir daí, tudo é variável |
-| **Exceção temporal** | Conteúdo de tenant aceito em engine por decisão explícita, com gatilho objetivo de remoção registrado em ADR | Enum de modalidades fitness em tool — válido enquanto vertical único |
-| **Drift disfarçado de exceção** | Conteúdo de tenant em engine sem ADR registrando o gatilho de remoção | `#E30613` como cor do produto, "bora!" como tom padrão do agente |
+Para aplicar a um projeto específico, criar ADR local que referencie este princípio e liste:
+- Quais decisões do projeto seguem o princípio
+- Quais exceções conscientes existem (com gatilho objetivo de revisita)
+- Quais violações ativas existem e como serão remediadas (brownfield)
 
 ---
 
-## 3. Regra mecânica
+## Princípio em uma frase
 
-A seguir, violações detectáveis em PR review. Cada uma tem exemplo de código que viola e o padrão correto.
-
-### 3.1 Cor, logo ou token visual de tenant em código
-
-**Viola:**
-```typescript
-// lib/theme.ts
-export const PRIMARY = '#E30613'   // cor da Fitness UNIC hardcoded no engine
-```
-
-**Passa:**
-```typescript
-// lib/theme.ts — engine lê do banco
-const theme = await db.from('academia_config')
-  .select('tema').eq('tenant_id', tenantId).single()
-const primary = theme.data?.tema?.primary ?? '#000000'  // fallback neutro
-```
-
-**Regra:** PR que define cor, fonte, logo ou qualquer token visual como constante em `lib/`, `components/`, `app/` ou arquivo de configuração (`tailwind.config`, `globals.css`) **sem** ler de `academia_config.tema` é rejeitada.
+Em projeto multi-tenant, **identidade de cliente específico vive em config por tenant — nunca em código compartilhado**. PR que cole identidade de cliente individual dentro de `lib/`, `components/`, `prompts/` ou qualquer caminho universal é rejeitada.
 
 ---
 
-### 3.2 Nome, slogan ou texto de marketing de tenant em código ou prompt
+## Por que esse princípio existe
 
-**Viola:**
-```typescript
-// lib/agents/cmo/system-prompt.ts
-const BASE = `Você é o CMO da Fitness UNIC, a melhor academia de Campo Grande.`
-```
+Três forças geram o anti-padrão:
 
-**Passa:**
-```typescript
-// lib/agents/cmo/system-prompt.ts
-const BASE = `Você é o CMO autônomo da ${config.nome_academia}.`
-// config vem de academia_config — lido antes de montar o prompt
-```
+**Força 1 — Viés do owner-cliente.** Quando o owner do SaaS é também o cliente piloto, a fronteira entre "o produto" e "minha empresa" fica psicologicamente nebulosa. Cada sprint resolve uma dor real do cliente piloto e "deixa pra refatorar depois" — esse "depois" vira 12 meses de débito. O viés é estrutural, não negligência.
 
-**Regra:** PR que contém nome próprio de academia, cidade específica, slogan ou qualquer texto de marketing como string literal em código ou template de prompt **é rejeitada**.
+**Força 2 — Tenant único existindo na prática.** Quando só existe 1 tenant rodando, qualquer coisa "funciona" em produção — o teste empírico falha em detectar acoplamento. Identidade vaza pelo caminho mais curto (`fs.readFileSync('CADERNO_X.md')`, constante hardcoded, enum colado em `lib/`) porque é mais rápido do que criar a abstração certa.
 
----
+**Força 3 — PRD ambíguo sobre escopo.** "Multi-tenant" é polissêmico. Pode significar "vários clientes do mesmo segmento" (multi-cliente) ou "várias verticais distintas" (multi-vertical). Sem distinção explícita, o time investe em RLS por `tenant_id` (multi-cliente) e esquece de abstrair léxico/identidade (multi-vertical). O resultado é um SaaS que multi-instancia o schema mas é monolítico no conteúdo.
 
-### 3.3 Arquivo de configuração ou memorial de tenant no repositório
-
-**Viola:**
-```
-/lib/tenants/unic-config.ts        ← arquivo por tenant no repo
-/lib/tenants/vertice-config.json   ← idem
-/docs/cadernos/unic-editorial.md   ← memorial lido em runtime via fs.readFileSync
-```
-
-**Passa:**
-```
-banco → academia_config (colunas argumentos_venda, objecoes_comuns, persona_cmo)
-banco → evolution_instances (por tenant)
-```
-
-**Regra:** PR que adiciona arquivo com nome de tenant ou lê arquivo de tenant via `fs.readFileSync` / `import` em runtime **é rejeitada**.
+**Custo do anti-padrão (medido em projetos reais):**
+- Sprint de débito de 3-5 dias quando o problema é detectado tardiamente
+- Retrabalho de prompts, componentes, enums — quanto mais tarde, mais espalhado
+- Bloqueio comercial: não dá pra demonstrar pra próximo cliente sem repintar tudo
+- Cristalização em docs: anti-padrão vira "regra do produto" no CLAUDE.md, infectando futuras PRs
 
 ---
 
-### 3.4 Enum que só funciona pra um vertical ou um tenant
+## As duas camadas de conteúdo de tenant
 
-**Viola:**
-```typescript
-// tool agendar_aula_experimental — enum hardcoded sem ADR
-modalidade: z.enum(['musculacao', 'funcional', 'pilates'])
-// Se cliente for estúdio de boxe, esse enum rejeita 'boxe' silenciosamente
-```
+A regra mecânica só funciona se distinguir duas camadas. Tratá-las igual gera falsos positivos (paralisa o projeto) ou falsos negativos (deixa vazar identidade).
 
-**Passa (com exceção temporal registrada em ADR):**
-```typescript
-// Aceito enquanto MKT for vertical fitness único — ver ADR-MKT-000 §3
-modalidade: z.enum(['musculacao', 'funcional', 'pilates'])
-// TODO: migrar para vertical_modalidades quando primeiro tenant não-fitness entrar
-```
+### Camada 1 — Identidade do tenant individual
 
-**Regra:** Enum que pressupõe vertical ou identidade de tenant **sem comentário apontando pro ADR** que registra o gatilho de remoção é rejeitado.
+Conteúdo que pertence a **um cliente específico** dentro da vertical do produto.
 
----
-
-### 3.5 Segredo ou credencial de tenant em variável de ambiente do engine
-
-**Viola:**
-```
-UNIC_EVOLUTION_API_KEY=xxx   # credencial de tenant específico em .env do engine
-```
-
-**Passa:**
-```sql
--- api_key_encrypted armazenada em evolution_instances.api_key_encrypted (Supabase Vault)
--- lida em runtime por tenant, nunca em variável de ambiente do engine
-```
-
-**Regra:** PR que adiciona variável de ambiente com nome de tenant ou credencial individual de tenant em `.env.example` ou `CLAUDE.md` **é rejeitada**.
-
----
-
-## 4. Exceções aceitas — critério objetivo
-
-Uma exceção é legítima se satisfizer **os três critérios** abaixo. Se falhar em qualquer um, é drift.
-
-| Critério | Pergunta de teste |
+| Tipo de conteúdo | Exemplos |
 |---|---|
-| **1. ADR registrada** | Existe `.adrs/ADR-XXX-YYY.md` citando esta exceção com justificativa? |
-| **2. Gatilho de remoção objetivo** | O ADR define condição mensurável (não "quando fizer sentido") que obriga refatoração? |
-| **3. Genérica dentro do vertical** | O conteúdo serve qualquer tenant do vertical, não um tenant específico? |
+| Marca e visual | Nome da empresa, cores, tipografia, logo, slogan |
+| Tom de voz | Formal/coloquial, vocabulário próprio, expressões características |
+| Caderno editorial | Argumentos de venda, objeções, respostas, palavras proibidas |
+| Configuração comercial | Lista de planos, preços, horários, regras de cancelamento |
+| Identidade humana | Nome de diretores, equipe, endereço, telefone |
+| Persona da IA | Como a IA se apresenta como representante daquele tenant |
 
-**Exemplo que passa nos 3:**
-- Enum `['musculacao','funcional','pilates']` em tool — ADR-MKT-000 §3 registra, gatilho é "primeiro tenant não-fitness", serve qualquer academia fitness.
+**Regra:** **SEMPRE em `<tabela_config_tenant>` por tenant. Zero exceções.** Hardcoded em código = violação inconsciente, PR rejeitada.
 
-**Exemplo que falha no critério 3:**
-- `#E30613` como cor padrão do produto — serve só a UNIC, não serve Academia Vértice com paleta azul-marinho.
+### Camada 2 — Léxico/domínio da vertical
 
-**Exemplo que falha no critério 2:**
-- `CADERNO_LEGACY.md` lido via `fs.readFileSync` sem gatilho de remoção — drift disfarçado de "decisão técnica".
+Conteúdo que pertence à **vertical inteira** que o produto atende. É o vocabulário do segmento, não de um cliente.
 
----
-
-## 5. Aplicação por camada
-
-| Camada | Engine (repositório) | Tenant content (banco) |
+| Tipo de conteúdo | Exemplos (vertical fitness) | Exemplos (vertical SaaS jurídico) |
 |---|---|---|
-| **Schema** | Estrutura das tabelas, índices, políticas RLS | Linhas — cada tenant popula as suas |
-| **Código** | Templates com `{placeholders}`, guardrails genéricos, tools com parâmetros | Valores que preenchem os placeholders |
-| **Prompt** | System prompt com blocos `[BLOCO 1..N]` e `{academia.campo}` | `academia_config.*` que preenche os blocos |
-| **Config** | `tailwind.config` com tokens CSS neutros ou variáveis | `academia_config.tema` com tokens do tenant |
-| **UI — dashboard** | Componentes, layouts, navegação — marca do SaaS | Nome da academia no header, dados do perfil |
-| **UI — saída externa** | Template de mensagem WhatsApp, template de post | Tom, copy, hashtags vindos de `academia_config` |
-| **Variáveis de ambiente** | Chaves de infraestrutura compartilhada (Supabase, OpenAI, Vercel) | Credenciais por tenant em `evolution_instances.api_key_encrypted` |
+| Termos de negócio | musculação, funcional, pilates, AE | petição, audiência, prazo, autos |
+| Enums de domínio | objetivo: emagrecer, ganhar massa, saúde | tipo_ação: cível, trabalhista, criminal |
+| Estados de processo | aluno ativo, ex-aluno, lead frio | em andamento, sentenciado, arquivado |
+| Conceitos de produto | check-in, dossiê, anamnese | timesheet, billable hours, conflict check |
+
+**Regra:** **pode estar em código quando o produto é vertical-único, MAS apenas com decisão consciente registrada em ADR local com gatilho objetivo de revisita.**
+
+Sem ADR explícito documentando a escolha = é violação por omissão. A decisão "esse produto é só fitness" tem que estar escrita em algum lugar auditável — não pode ser premissa implícita.
 
 ---
 
-## 6. Modelo de produto implicado por este princípio
+## Regra mecânica — checklist binário
 
-Este princípio pressupõe **modelo B parcial:**
+Aplicar a toda PR que toca código compartilhado (`lib/`, `components/`, `prompts/`, `templates/`, `enums/`, qualquer caminho não-tenant-específico):
 
-- **Dashboard** tem marca do SaaS (engine controla visual)
-- **WhatsApp, conteúdo gerado, e qualquer saída que o lead vê** reflete identidade do tenant (tenant content controla visual da saída)
+```
+□ A PR adiciona conteúdo da Camada 1 (identidade de cliente individual)?
+  → SE SIM: PR rejeitada. Mover pra tabela de config por tenant.
 
-Dashboard white-label total (modelo B puro) requer extensão deste princípio: tokens visuais do dashboard também viram tenant content. Isso exige ADR dedicada antes de implementar.
+□ A PR adiciona conteúdo da Camada 2 (léxico da vertical)?
+  → SE SIM E existe ADR local declarando o produto como vertical-única:
+    → Permitido. Verificar que está na lista de exceções do ADR.
+  → SE SIM E não existe ADR documentando: PR rejeitada até decisão consciente.
+
+□ A PR modifica conteúdo existente de Camada 1 ou 2?
+  → Aplica mesmas regras do "adiciona".
+
+□ A PR adiciona referência cruzada a um cliente específico
+  (nome, marca, exemplo "como na Academia X")?
+  → SE SIM: PR rejeitada. Exemplos genéricos ou abstrações de persona.
+```
+
+**Sinal de violação silenciosa:** se a PR funciona porque "é assim que o cliente atual faz" sem que o código declare "isso é configuração", há vazamento de identidade. Teste: substituir mentalmente o nome do cliente atual por "Cliente Genérico Inc" — se o código quebra ou fica estranho, está hardcoded.
 
 ---
 
-## 7. Apêndice — anti-padrões observados
+## Anti-padrões identificáveis
 
-Lista factual. Sem moralizar — só registrar pra não repetir.
+Padrões nomeados para auditoria. Encontrar qualquer um = débito de Camada 1 com remediação obrigatória.
 
-| Anti-padrão | Onde apareceu | Consequência observada |
+| Anti-padrão | Sinal | Substituto correto |
 |---|---|---|
-| Memorial de tenant (`CADERNO_LEGACY.md`) lido via `fs.readFileSync` no orquestrador | IARA V2 — produção | Engine assumiu identidade do primeiro tenant; segundo tenant herdaria léxico do primeiro |
-| Enums `IARA_FASES` e `HISTORICO_TREINO` fitness-only sem exceção registrada | IARA V2 — produção | Vertical não-fitness tecnicamente inviável sem refatoração de código |
-| `keywords_ibc6.ts` com léxico fitness embutido | IARA V2 — produção | IBC (metodologia do produto) misturado com fitness (vertical do primeiro cliente) |
-| Tokens visuais do tenant (`#E30613`, fontes UNIC) como design system do engine | marketing-saas — CLAUDE.md v1.1 | Engine prescreveria identidade UNIC a todo tenant futuro; segundo tenant quebraria gate de contraste |
-| Nome do produto ("Prisma") mencionado em CLAUDE.md de outro projeto | marketing-saas — referência a projeto morto | Drift de identidade silencioso em instruções do agente Code |
+| **Caderno-no-FS** | `fs.readFileSync('CADERNO_X.md')` em código de produção | Conteúdo em coluna JSONB/TEXT em `<config_tenant>` |
+| **Identidade-no-prompt** | System prompt com nome de empresa hardcoded | Template com placeholder `{tenant.nome}` resolvido em runtime |
+| **Cor-no-componente** | `bg-[#E30613]` (vermelho UNIC) em componente compartilhado | CSS var (`var(--brand-primary)`) carregada do tema do tenant |
+| **Tom-no-código** | `if (cliente_x) return "bora!"` ou template específico de cliente | `tom_de_voz` em `<config_tenant>` injetado no prompt |
+| **Persona-cristalizada** | "O SaaS usa a identidade visual da [Cliente X]" em doc oficial | "O SaaS suporta tema por tenant; [Cliente X] usa cores documentadas em [...] como seed" |
+| **Exemplo-com-nome** | Comentário "// como faz a Academia UNIC com o plano dela" | Comentário genérico ou exemplo abstrato |
+| **Enum-de-cliente** | `enum Plano { UNIC_PERSONAL, UNIC_TRADICIONAL }` | `planos` JSONB por tenant em `<config_tenant>` |
+| **Endereço-no-código** | Constante com telefone, endereço, e-mail do cliente | Em `<config_tenant>` |
 
 ---
 
-## 8. Gatilhos de revisita
+## Casos limítrofes — parece violação mas não é
 
-Este princípio é revisitado quando qualquer uma das condições abaixo for verdadeira:
+**1. Léxico da vertical aceito em `lib/`** *(parece violação, não é se documentado)*
 
-- Produto adotar modelo white-label total (B puro) → extensão da seção 5 para tokens visuais do dashboard
-- Produto expandir para multi-vertical (fitness + não-fitness) → seção 4 "exceções aceitas" ganha critério de vertical
-- Aparecimento de novo anti-padrão não listado na seção 7 → incluir + abrir ADR no repo afetado
-- ADR local que referencia este princípio for revisitada → checar se regra mecânica ainda captura o caso
+Exemplo: `lib/agents/tools.ts` aceita parâmetro `modalidade: 'musculacao' | 'funcional' | 'pilates'`.
+
+Não é violação Camada 1 — é léxico de vertical. Aceitável **se** existe ADR local declarando o produto como vertical-fitness com gatilho objetivo de revisita ("se MKT vender pra vertical não-fitness, refatorar para `vertical_lexico` configurável"). Sem ADR explícito → vira violação por omissão.
+
+**2. Tenant default em ambiente de desenvolvimento** *(parece violação, não é)*
+
+Seed que cria `tenant_id = 'unic-pilot'` em ambiente local para o owner testar sem precisar provisionar cada vez.
+
+Não é violação se: o seed está em `seeds/` (não em `lib/`), o tenant é tratado como qualquer outro tenant pelo código, e a ausência de hardcode é verificável (pesquisa por "unic" em `lib/` retorna zero).
+
+**3. Skill ou template canônico citando cliente real como exemplo** *(parece violação, não é)*
+
+Documentação técnica que cita "exemplo: no caso da Fitness UNIC, o caderno tem X linhas" para ilustrar uso.
+
+Não é violação porque é doc, não código. Mas cuidado: se o exemplo vira "regra de produto" ("o caderno deve ter X linhas como na UNIC"), o anti-padrão pulou pra cristalização. Manter exemplos como ilustração, nunca como spec.
+
+## Casos limítrofes — parece OK mas é violação
+
+**1. Constante "neutra" com valor do cliente atual**
+
+```typescript
+export const TIPOGRAFIA_PADRAO = 'Syne';  // fonte da UNIC
+```
+
+Nome genérico esconde que o valor é específico do cliente. Violação Camada 1 — tipografia é identidade visual. Substituto: `tema.tipografia` por tenant.
+
+**2. Cor "padrão" do sistema que é cor do cliente**
+
+```css
+:root {
+  --primary: #1A2E4A;  /* Midnight da PRISMA */
+}
+```
+
+Parece neutro, mas se o `--primary` veio das cores do cliente, virou identidade compartilhada. Em produto multi-tenant, `:root` carrega cores **do tema padrão de fallback**, e cada tenant sobrescreve via CSS vars carregadas do banco.
+
+**3. Comentário que documenta a violação**
+
+```typescript
+// TODO: extrair pra config quando tivermos segundo cliente
+const HORARIO_FUNCIONAMENTO = '05h-21h';
+```
+
+Reconhecer o débito não anula a violação. Esse comentário é exatamente como o `CADERNO_LEGACY.md` vazou no IARA V2 — todo mundo sabia, ninguém escalou. Regra: não cria o débito; se já existe, remedia.
 
 ---
 
-## 9. Apêndices — aplicações registradas
+## Como auditar (instruções pra Code/skill)
 
-- **Apêndice A:** [ADR-MKT-000](.adrs/ADR-MKT-000.md) — aplicação ao marketing-saas (greenfield)
-- **Apêndice B:** [ADR-V2-000](.adrs/ADR-V2-000.md) — aplicação ao IARA V2 (débitos ativos)
+Auditoria de violação Camada 1 em projeto existente. Output esperado: lista de pontos a corrigir, não correção em si.
+
+```
+1. Listar nomes de identidade do cliente atual:
+   - Nome da empresa, variantes (UNIC, Fitness UNIC, FU)
+   - Nome de diretores/sócios
+   - Cores específicas (hex codes da marca)
+   - Tipografias específicas
+   - Tom de voz característico (palavras de assinatura)
+   - Endereço, telefone, e-mails de domínio
+
+2. Grep recursivo em código compartilhado (excluir seeds/, scripts/, docs/):
+   grep -rn -i "<termo>" lib/ components/ prompts/ templates/
+
+3. Para cada hit, classificar:
+   a. Variável/constante hardcoded → VIOLAÇÃO Camada 1 (remediar)
+   b. String em prompt template sem placeholder → VIOLAÇÃO Camada 1
+   c. Exemplo em comentário ou docstring → permitido (sinalizar se virou spec)
+   d. Tipo/enum com nome de cliente → VIOLAÇÃO Camada 1
+   e. Path/filename com nome de cliente → VIOLAÇÃO Camada 1
+   f. Léxico de vertical (modalidade, AE, etc.) → verificar ADR local
+      - Existe ADR declarando vertical única? → permitido
+      - Não existe? → VIOLAÇÃO por omissão (criar ADR ou abstrair)
+
+4. Entregar:
+   - Lista numerada de violações Camada 1 com caminho + linha
+   - Lista numerada de violações por omissão Camada 2 (sem ADR)
+   - Sugestão de remediação por tipo (não código pronto — owner prioriza)
+   - Estimativa de esforço por bloco
+```
+
+Skill recomendada para automatizar: criar `skill-tenant-audit/` que executa esta auditoria com prompt cirúrgico, separada do executor que aplica correções.
+
+---
+
+## O que esse princípio **não** cobre
+
+Para evitar diluição, escopo explícito:
+
+- **Não cobre arquitetura LLM-first** → ver `MANIFESTO_2026.md`
+- **Não cobre billing/pricing por tenant** → outro princípio universal a escrever
+- **Não cobre observability multi-tenant** → ver convenções específicas do projeto
+- **Não cobre RLS/isolamento de dados** → ver `skill-seguranca` ou ADRs de schema do projeto
+- **Não cobre internacionalização (i18n)** → idioma é dimensão ortogonal, exige princípio próprio
+- **Não cobre customização de feature flags por plano** → escopo de billing/produto
+
+---
+
+## Aplicações conhecidas
+
+| Projeto | ADR local | Status |
+|---|---|---|
+| `marketing-saas` (MKT) | `.adrs/ADR-MKT-000.md` | Greenfield — princípio aplicado desde dia 1 |
+| `iara-systems-v2` (V2) | `.adrs/ADR-V2-000.md` | Brownfield — violações ativas, remediação em `S-DEBT-CRITICAL` |
+
+---
+
+## Histórico de revisões
+
+| Versão | Data | Alteração |
+|---|---|---|
+| v1.0 | 20/mai/2026 | Versão inicial. Destilado da autópsia do IARA V2 e do ADR-MKT-001 do `marketing-saas`. |
+
+---
+
+*Fim do ENGINE_VS_TENANT.md*
