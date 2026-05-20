@@ -10,22 +10,29 @@ Stack: Next.js 14 App Router + Supabase + Evolution API + OpenAI + Vercel.
 
 ## Identidade visual
 
-**Fonte de verdade:** `Downloads/Marketing SaaS/Manual Identidade Visual Fitness UNIC _LOGO E CORES.md`
+**Modelo:** B parcial — dashboard com marca do SaaS, saída externa (WhatsApp,
+conteúdo) com identidade do tenant.
 
-O SaaS usa a identidade visual da Fitness UNIC — não há marca separada ("Prisma" é referência de outro projeto, ignorar).
+**Dashboard (engine):** design system neutro — tokens em `tailwind.config` sem
+cor de tenant. Paleta base: branco, cinzas, 1 cor de acento do SaaS (a definir
+quando SaaS tiver marca própria).
 
-| Token | Valor | Uso |
-|---|---|---|
-| `--color-primary` | `#E30613` | CTAs, botões de ação, bordas de destaque |
-| `--color-bg` | `#FFFFFF` | Fundo principal |
-| `--color-surface` | `#F8FAFC` | Cards, painéis |
-| `--color-text` | `#0F172A` | Texto principal |
-| `--color-muted` | `#64748B` | Labels, textos secundários |
-| `--color-border` | `#E2E8F0` | Bordas e divisores |
+**Saída externa (tenant content):** lida de `academia_config.tema` em runtime.
+Estrutura esperada em `academia_config.tema`:
+```json
+{
+  "primary": "#E30613",
+  "secondary": "#0F172A",
+  "font": "Inter",
+  "logo_url": "https://..."
+}
+```
 
-**Regra 60-30-10:** 60% branco/cinza-gelo · 30% cinza médio/neutro · 10% vermelho `#E30613`
-**Fontes:** sans-serif moderna (Inter ou Geist) — títulos em maiúsculas bold, textos em normal
-**Estilo:** Clean & Powerful — vermelho aparece só em CTAs e destaques, nunca como fundo extenso
+**Seed da UNIC:** inserir como registro em `academia_config.tema` no script de
+seed — não como constante em código.
+
+**Princípio:** `docs/principles/ENGINE_VS_TENANT.md`
+**ADR local:** `.adrs/ADR-MKT-000.md`
 
 ## Regras inegociáveis
 
