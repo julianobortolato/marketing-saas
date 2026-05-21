@@ -1,5 +1,5 @@
 /**
- * TDD RED: Evolution webhook route tests
+ * TDD: Evolution webhook route tests
  * 9 behaviors for POST /api/webhooks/evolution
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -9,49 +9,27 @@ import { NextRequest } from 'next/server'
 // Mock server-only
 vi.mock('server-only', () => ({}))
 
-// Mock Supabase admin
-const mockRpc = vi.fn()
-const mockFrom = vi.fn()
-const mockSelect = vi.fn()
-const mockEq = vi.fn()
-const mockSingle = vi.fn()
-const mockUpdate = vi.fn()
-
-function makeChainMock(finalResult: unknown) {
-  const chain = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue(finalResult),
-    update: vi.fn().mockReturnThis(),
-  }
-  return chain
-}
-
+// Mock Supabase admin — factory uses only inline vi.fn()
 vi.mock('@/lib/supabase/admin', () => ({
-  createAdminClient: vi.fn(() => ({
-    rpc: mockRpc,
-    from: mockFrom,
-  })),
+  createAdminClient: vi.fn(),
 }))
 
-// Mock rate limiters (always pass in tests)
+// Mock rate limiters
 vi.mock('@/lib/rate-limit/upstash', () => ({
-  rateLimitByIP: vi.fn().mockResolvedValue({ success: true, remaining: 100 }),
-  rateLimitByTenant: vi.fn().mockResolvedValue({ success: true, remaining: 100 }),
+  rateLimitByIP: vi.fn(),
+  rateLimitByTenant: vi.fn(),
 }))
 
 // Mock OpenAI client
-const mockCallOpenAI = vi.fn()
 vi.mock('@/lib/openai/client', () => ({
-  callOpenAIWithTools: mockCallOpenAI,
+  callOpenAIWithTools: vi.fn(),
   FALLBACK_OPENAI_ERROR: 'Um momento, vou verificar isso com a equipe',
 }))
 
 // Mock guardrails
-const mockApplyGuardrails = vi.fn()
 vi.mock('@/lib/agents/cmo/guardrails', () => ({
-  applyGuardrails: mockApplyGuardrails,
-  FALLBACK_DESCONTO: 'Entendo que está buscando a melhor condição. Vou conectar você a um especialista.',
+  applyGuardrails: vi.fn(),
+  FALLBACK_DESCONTO: 'Entendo que está buscando a melhor condição.',
 }))
 
 // Mock system prompt
@@ -66,14 +44,17 @@ vi.mock('@/lib/agents/cmo/tools', () => ({
 }))
 
 // Mock global fetch (Evolution API send)
-const mockFetch = vi.fn()
-vi.stubGlobal('fetch', mockFetch)
+vi.stubGlobal('fetch', vi.fn())
 
-// Import the handler AFTER mocks are set up
+// Import modules AFTER mocks are registered
 import { POST } from '../route'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { rateLimitByIP, rateLimitByTenant } from '@/lib/rate-limit/upstash'
+import { callOpenAIWithTools } from '@/lib/openai/client'
+import { applyGuardrails } from '@/lib/agents/cmo/guardrails'
 
 // ============================================================
-// Test helpers
+// Test constants
 // ============================================================
 
 const TEST_SECRET = 'test-webhook-secret-32-chars-long-abc'
@@ -117,59 +98,61 @@ function makeRequest(body: string, signature: string) {
   })
 }
 
-beforeEach(() => {
-  vi.clearAllMocks()
-  // Default env
-  vi.stubEnv('EVOLUTION_WEBHOOK_SECRET', TEST_SECRET)
-  vi.stubEnv('EVOLUTION_API_URL', 'https://evolution.example.com')
+// ============================================================
+// Admin client mock setup helper
+// ============================================================
 
-  // Default mock chain for from().select().eq().single()
-  mockFrom.mockImplementation((table: string) => {
+type AdminMock = {
+  rpc: ReturnType<typeof vi.fn>
+  from: ReturnType<typeof vi.fn>
+}
+
+function makeAdminMock(): AdminMock {
+  const rpc = vi.fn()
+  const from = vi.fn()
+
+  ;(createAdminClient as ReturnType<typeof vi.fn>).mockReturnValue({ rpc, from })
+
+  return { rpc, from }
+}
+
+function setupDefaultFrom(from: ReturnType<typeof vi.fn>) {
+  from.mockImplementation((table: string) => {
+    const singleChain = (data: unknown) => ({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({ data, error: null }),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+      update: vi.fn().mockReturnThis(),
+    })
+
     if (table === 'tenants') {
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: {
-                ia_habilitada: true,
-                ia_limite_diario_usd: 5.00,
-                iara_tenant_id: null,
-              },
-              error: null,
-            }),
-          }),
-        }),
-      }
+      return singleChain({
+        ia_habilitada: true,
+        ia_limite_diario_usd: 5.0,
+        iara_tenant_id: null,
+      })
     }
     if (table === 'academia_config') {
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: {
-                nome_academia: 'Academia Teste',
-                horarios: { text: 'Seg-Sex 6h-22h' },
-                planos: { text: 'Mensal R$90' },
-                palavras_proibidas: [],
-                persona_cmo: null,
-              },
-              error: null,
-            }),
-          }),
-        }),
-      }
+      return singleChain({
+        nome_academia: 'Academia Teste',
+        horarios: { text: 'Seg-Sex 6h-22h' },
+        planos: { text: 'Mensal R$90' },
+        palavras_proibidas: [],
+        persona_cmo: null,
+      })
+    }
+    if (table === 'evolution_instances') {
+      return singleChain({ api_key_encrypted: 'test-api-key' })
     }
     if (table === 'chat_messages') {
       return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              order: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-              }),
-            }),
-          }),
-        }),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue({ data: [], error: null }),
         update: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: null, error: null }),
@@ -177,27 +160,10 @@ beforeEach(() => {
         }),
       }
     }
-    if (table === 'evolution_instances') {
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
-              data: {
-                api_key_encrypted: 'test-api-key',
-              },
-              error: null,
-            }),
-          }),
-        }),
-      }
-    }
-    // Default fallback
     return {
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: null, error: null }),
-        }),
-      }),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({ data: null, error: null }),
       update: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           eq: vi.fn().mockResolvedValue({ data: null, error: null }),
@@ -205,15 +171,22 @@ beforeEach(() => {
       }),
     }
   })
+}
 
-  // Default mockRpc behavior
-  mockRpc.mockImplementation((name: string) => {
+function setupDefaultRpc(rpc: ReturnType<typeof vi.fn>, overrides: Record<string, unknown> = {}) {
+  rpc.mockImplementation((name: string) => {
     if (name === 'fn_tenant_id_by_evolution_instance') {
       return Promise.resolve({ data: TENANT_ID, error: null })
     }
     if (name === 'rpc_persistir_mensagem_entrada') {
       return Promise.resolve({
-        data: { ok: true, idempotente: false, conversa_id: CONVERSA_ID, lead_id: LEAD_ID, ia_ativa: true },
+        data: overrides.persistData ?? {
+          ok: true,
+          idempotente: false,
+          conversa_id: CONVERSA_ID,
+          lead_id: LEAD_ID,
+          ia_ativa: true,
+        },
         error: null,
       })
     }
@@ -222,22 +195,32 @@ beforeEach(() => {
     }
     return Promise.resolve({ data: { ok: true }, error: null })
   })
+}
 
-  // Default callOpenAI behavior
-  mockCallOpenAI.mockResolvedValue({
+beforeEach(() => {
+  vi.clearAllMocks()
+  vi.stubEnv('EVOLUTION_WEBHOOK_SECRET', TEST_SECRET)
+  vi.stubEnv('EVOLUTION_API_URL', 'https://evolution.example.com')
+
+  // Default rate limit mocks
+  ;(rateLimitByIP as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true, remaining: 100 })
+  ;(rateLimitByTenant as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true, remaining: 100 })
+
+  // Default OpenAI mock
+  ;(callOpenAIWithTools as ReturnType<typeof vi.fn>).mockResolvedValue({
     texto: 'Olá! Posso ajudar você a conhecer nossos planos.',
     handoff_solicitado: false,
     usage: { tokens_entrada: 100, tokens_saida: 50, custo_usd: 0.001, duracao_ms: 500 },
   })
 
-  // Default guardrails behavior
-  mockApplyGuardrails.mockReturnValue({
+  // Default guardrails mock
+  ;(applyGuardrails as ReturnType<typeof vi.fn>).mockReturnValue({
     texto: 'Olá! Posso ajudar você a conhecer nossos planos.',
     handoff_solicitado: false,
   })
 
-  // Default Evolution API send
-  mockFetch.mockResolvedValue({ ok: true, status: 200 })
+  // Default fetch mock
+  ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, status: 200 })
 })
 
 // ============================================================
@@ -254,7 +237,8 @@ describe('POST /api/webhooks/evolution', () => {
 
     expect(response.status).toBe(401)
     expect(json.error).toBe('invalid_signature')
-    expect(mockRpc).not.toHaveBeenCalled()
+    // Admin client should NOT have been called at all
+    expect(createAdminClient).not.toHaveBeenCalled()
   })
 
   it('should return 500 with { error: "webhook_misconfigured" } when EVOLUTION_WEBHOOK_SECRET is missing', async () => {
@@ -271,10 +255,14 @@ describe('POST /api/webhooks/evolution', () => {
   })
 
   it('should return 200 silently for unknown instance_name (idempotency)', async () => {
-    // fn_tenant_id_by_evolution_instance returns null for unknown instance
-    mockRpc.mockImplementationOnce(() =>
-      Promise.resolve({ data: null, error: null })
-    )
+    const { rpc, from } = makeAdminMock()
+    setupDefaultFrom(from)
+    rpc.mockImplementation((name: string) => {
+      if (name === 'fn_tenant_id_by_evolution_instance') {
+        return Promise.resolve({ data: null, error: null })
+      }
+      return Promise.resolve({ data: null, error: null })
+    })
 
     const body = JSON.stringify(buildEvolutionPayload())
     const signature = buildSignature(body, TEST_SECRET)
@@ -285,12 +273,15 @@ describe('POST /api/webhooks/evolution', () => {
 
     expect(response.status).toBe(200)
     expect(json.ok).toBe('unknown_instance')
-    // Should NOT have called rpc_persistir_mensagem_entrada
-    const rpcCalls = mockRpc.mock.calls.map((c) => c[0])
+    const rpcCalls = rpc.mock.calls.map((c: unknown[]) => c[0])
     expect(rpcCalls).not.toContain('rpc_persistir_mensagem_entrada')
   })
 
   it('should return 200 and call rpc_persistir_mensagem_entrada for valid HMAC + known instance + new message', async () => {
+    const { rpc, from } = makeAdminMock()
+    setupDefaultFrom(from)
+    setupDefaultRpc(rpc)
+
     const body = JSON.stringify(buildEvolutionPayload())
     const signature = buildSignature(body, TEST_SECRET)
     const request = makeRequest(body, signature)
@@ -298,22 +289,21 @@ describe('POST /api/webhooks/evolution', () => {
     const response = await POST(request)
 
     expect(response.status).toBe(200)
-    const rpcCalls = mockRpc.mock.calls.map((c) => c[0])
+    const rpcCalls = rpc.mock.calls.map((c: unknown[]) => c[0])
     expect(rpcCalls).toContain('rpc_persistir_mensagem_entrada')
   })
 
   it('should return 200 without calling callOpenAIWithTools when rpc_persistir_mensagem_entrada returns ia_ativa=false', async () => {
-    mockRpc.mockImplementation((name: string) => {
-      if (name === 'fn_tenant_id_by_evolution_instance') {
-        return Promise.resolve({ data: TENANT_ID, error: null })
-      }
-      if (name === 'rpc_persistir_mensagem_entrada') {
-        return Promise.resolve({
-          data: { ok: true, idempotente: false, conversa_id: CONVERSA_ID, lead_id: LEAD_ID, ia_ativa: false },
-          error: null,
-        })
-      }
-      return Promise.resolve({ data: { ok: true }, error: null })
+    const { rpc, from } = makeAdminMock()
+    setupDefaultFrom(from)
+    setupDefaultRpc(rpc, {
+      persistData: {
+        ok: true,
+        idempotente: false,
+        conversa_id: CONVERSA_ID,
+        lead_id: LEAD_ID,
+        ia_ativa: false,
+      },
     })
 
     const body = JSON.stringify(buildEvolutionPayload())
@@ -323,45 +313,38 @@ describe('POST /api/webhooks/evolution', () => {
     const response = await POST(request)
 
     expect(response.status).toBe(200)
-    expect(mockCallOpenAI).not.toHaveBeenCalled()
+    expect(callOpenAIWithTools).not.toHaveBeenCalled()
   })
 
-  it('should return 200, send fallback via Evolution, and NOT call OpenAI when ia_habilitada=false', async () => {
-    // tenant row returns ia_habilitada=false
-    mockFrom.mockImplementation((table: string) => {
+  it('should return 200, call fetch (Evolution send), and NOT call OpenAI when ia_habilitada=false', async () => {
+    const { rpc, from } = makeAdminMock()
+
+    from.mockImplementation((table: string) => {
       if (table === 'tenants') {
         return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: {
-                  ia_habilitada: false,
-                  ia_limite_diario_usd: 5.00,
-                  iara_tenant_id: null,
-                },
-                error: null,
-              }),
-            }),
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({
+            data: { ia_habilitada: false, ia_limite_diario_usd: 5.0, iara_tenant_id: null },
+            error: null,
           }),
         }
       }
       if (table === 'evolution_instances') {
         return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
-                data: { api_key_encrypted: 'test-api-key' },
-                error: null,
-              }),
-            }),
-          }),
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: { api_key_encrypted: 'test-key' }, error: null }),
         }
       }
       return {
-        select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null, error: null }) }) }),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({ data: null, error: null }),
         update: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: null, error: null }) }) }),
       }
     })
+    setupDefaultRpc(rpc)
 
     const body = JSON.stringify(buildEvolutionPayload())
     const signature = buildSignature(body, TEST_SECRET)
@@ -370,29 +353,16 @@ describe('POST /api/webhooks/evolution', () => {
     const response = await POST(request)
 
     expect(response.status).toBe(200)
-    expect(mockCallOpenAI).not.toHaveBeenCalled()
-    // Should have called fetch (Evolution API send) for fallback message
-    expect(mockFetch).toHaveBeenCalled()
+    expect(callOpenAIWithTools).not.toHaveBeenCalled()
+    expect(globalThis.fetch).toHaveBeenCalled()
   })
 
-  it('happy path: should call callOpenAIWithTools, applyGuardrails, rpc_persistir_resposta_bot BEFORE Evolution send, in correct order', async () => {
+  it('happy path: callOpenAIWithTools, applyGuardrails, rpc_persistir_resposta_bot BEFORE fetch (Evolution send)', async () => {
     const callOrder: string[] = []
+    const { rpc, from } = makeAdminMock()
+    setupDefaultFrom(from)
 
-    mockCallOpenAI.mockImplementationOnce(() => {
-      callOrder.push('callOpenAIWithTools')
-      return Promise.resolve({
-        texto: 'Temos ótimos planos!',
-        handoff_solicitado: false,
-        usage: { tokens_entrada: 100, tokens_saida: 50, custo_usd: 0.001, duracao_ms: 500 },
-      })
-    })
-
-    mockApplyGuardrails.mockImplementationOnce(() => {
-      callOrder.push('applyGuardrails')
-      return { texto: 'Temos ótimos planos!', handoff_solicitado: false }
-    })
-
-    mockRpc.mockImplementation((name: string) => {
+    rpc.mockImplementation((name: string) => {
       if (name === 'fn_tenant_id_by_evolution_instance') return Promise.resolve({ data: TENANT_ID, error: null })
       if (name === 'rpc_persistir_mensagem_entrada') {
         return Promise.resolve({
@@ -407,7 +377,21 @@ describe('POST /api/webhooks/evolution', () => {
       return Promise.resolve({ data: { ok: true }, error: null })
     })
 
-    mockFetch.mockImplementationOnce(() => {
+    ;(callOpenAIWithTools as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+      callOrder.push('callOpenAIWithTools')
+      return Promise.resolve({
+        texto: 'Temos ótimos planos!',
+        handoff_solicitado: false,
+        usage: { tokens_entrada: 100, tokens_saida: 50, custo_usd: 0.001, duracao_ms: 500 },
+      })
+    })
+
+    ;(applyGuardrails as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+      callOrder.push('applyGuardrails')
+      return { texto: 'Temos ótimos planos!', handoff_solicitado: false }
+    })
+
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
       callOrder.push('evolution_send')
       return Promise.resolve({ ok: true, status: 200 })
     })
@@ -419,25 +403,24 @@ describe('POST /api/webhooks/evolution', () => {
     const response = await POST(request)
 
     expect(response.status).toBe(200)
-
-    // Verify call order
     expect(callOrder.indexOf('callOpenAIWithTools')).toBeLessThan(callOrder.indexOf('applyGuardrails'))
     expect(callOrder.indexOf('applyGuardrails')).toBeLessThan(callOrder.indexOf('rpc_persistir_resposta_bot'))
     expect(callOrder.indexOf('rpc_persistir_resposta_bot')).toBeLessThan(callOrder.indexOf('evolution_send'))
   })
 
   it('idempotency: same evolution_message_id 3 times produces exactly 1 OpenAI call', async () => {
-    // On second and third redelivery, rpc_persistir_mensagem_entrada returns idempotente=true
-    let callCount = 0
-    mockRpc.mockImplementation((name: string) => {
+    let persistCallCount = 0
+    const { rpc, from } = makeAdminMock()
+    setupDefaultFrom(from)
+
+    rpc.mockImplementation((name: string) => {
       if (name === 'fn_tenant_id_by_evolution_instance') return Promise.resolve({ data: TENANT_ID, error: null })
       if (name === 'rpc_persistir_mensagem_entrada') {
-        callCount++
-        const isFirst = callCount === 1
+        persistCallCount++
         return Promise.resolve({
           data: {
             ok: true,
-            idempotente: !isFirst,
+            idempotente: persistCallCount > 1, // first call is new, rest are idempotent
             conversa_id: CONVERSA_ID,
             lead_id: LEAD_ID,
             ia_ativa: true,
@@ -454,17 +437,19 @@ describe('POST /api/webhooks/evolution', () => {
     const body = JSON.stringify(buildEvolutionPayload())
     const signature = buildSignature(body, TEST_SECRET)
 
-    // Send 3 times with same payload
     await POST(makeRequest(body, signature))
     await POST(makeRequest(body, signature))
     await POST(makeRequest(body, signature))
 
     // OpenAI should only have been called once (idempotent redeliveries skip LLM)
-    expect(mockCallOpenAI).toHaveBeenCalledTimes(1)
+    expect(callOpenAIWithTools).toHaveBeenCalledTimes(1)
   })
 
   it('should return 500 with { error: "internal" } on thrown exception, never echoing exception.message', async () => {
-    mockRpc.mockImplementation((name: string) => {
+    const { rpc, from } = makeAdminMock()
+    setupDefaultFrom(from)
+
+    rpc.mockImplementation((name: string) => {
       if (name === 'fn_tenant_id_by_evolution_instance') return Promise.resolve({ data: TENANT_ID, error: null })
       if (name === 'rpc_persistir_mensagem_entrada') {
         throw new Error('Database connection lost — very sensitive internal error')
@@ -481,7 +466,6 @@ describe('POST /api/webhooks/evolution', () => {
 
     expect(response.status).toBe(500)
     expect(json.error).toBe('internal')
-    // Must NOT echo the exception message
     expect(JSON.stringify(json)).not.toContain('Database connection lost')
     expect(JSON.stringify(json)).not.toContain('sensitive')
   })

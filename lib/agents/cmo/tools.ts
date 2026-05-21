@@ -339,7 +339,7 @@ async function handleHandoffHumano(
   const parsed = handoffHumanoSchema.safeParse(args)
   if (!parsed.success) return { erro: 'validation_failed' }
 
-  const { conversa_id, motivo, observacao_para_atendente: _obs } = parsed.data
+  const { conversa_id, motivo } = parsed.data
 
   // Call rpc_handoff_humano with explicit p_tenant_id
   const { data, error } = await context.supabase.rpc('rpc_handoff_humano', {
