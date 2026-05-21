@@ -1,0 +1,79 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-21T13:01:00Z",
+  "phase": "03",
+  "phase_name": "03-agente-whatsapp",
+  "phase_dir": ".planning/phases/03-agente-whatsapp",
+  "plan": 2,
+  "task": 4,
+  "total_tasks": 4,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "Conversas read-only views + handoff Server Action + sidebar nav", "status": "done", "commit": "454585a"},
+    {"id": 2, "name": "Editorial CRUD page + Server Action + Zod validator", "status": "done", "commit": "87dc69d"},
+    {"id": 3, "name": "GET /api/admin/saude-mkt diagnostics endpoint", "status": "done", "commit": "63ebed9"},
+    {"id": 4, "name": "Manual handoff smoke check (Task 4 checkpoint)", "status": "done", "commit": "b9030b3"}
+  ],
+  "remaining_tasks": [
+    {"id": "03-03-T1", "name": "Smoke tests suite (8 files) + CUTOVER-CHECKLIST.md", "status": "not_started", "plan": "03-03"}
+  ],
+  "blockers": [
+    {
+      "description": "Migration 0011 (caderno_editorial_* columns) and 0012 (WhatsApp GRANTs) committed locally but need Supabase SQL Editor apply if not yet done",
+      "type": "human_action",
+      "workaround": "Owner confirmed 0012 was applied during testing; 0011 may need explicit apply"
+    },
+    {
+      "description": "git push origin/main never executed — 14+ commits ahead of remote",
+      "type": "human_action",
+      "workaround": "Manual git push before Vercel deploy"
+    }
+  ],
+  "human_actions_pending": [
+    {
+      "action": "Apply migration 0011 in Supabase SQL Editor if not already applied",
+      "context": "Adds caderno_editorial_* columns to academia_config — needed for editorial form",
+      "blocking": false
+    },
+    {
+      "action": "Seed evolution_instances row for Fitness UNIC before running smoke tests (Plan 03-03)",
+      "context": "03-03 CUTOVER-CHECKLIST.md requires instance_name='iara_v2_staging', webhook_secret matching EVOLUTION_WEBHOOK_SECRET, ativo=true",
+      "blocking": true
+    },
+    {
+      "action": "git push origin main",
+      "context": "14+ commits ahead of remote, never pushed",
+      "blocking": false
+    },
+    {
+      "action": "Fix pre-existing bug: Tom de voz radio button não seleciona em /dashboard/configuracoes",
+      "context": "Owner reported — not introduced by 03-02, pre-existing in config-form.tsx RadioGroup",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "Migration 0011 created to add caderno_editorial_* columns",
+      "rationale": "Migration 0006 only had argumentos_venda/objecoes_comuns/palavras_proibidas/gatilhos_handoff/persona_cmo; plan interfaces listed caderno_editorial_* which didn't exist",
+      "phase": "03"
+    },
+    {
+      "decision": "rpc_handoff_humano called with explicit p_tenant_id",
+      "rationale": "Migration 0010 signature requires (p_tenant_id UUID, p_conversa_id UUID, p_motivo TEXT) — plan description had omitted p_tenant_id",
+      "phase": "03"
+    },
+    {
+      "decision": "Migration 0012 created for WhatsApp table GRANTs",
+      "rationale": "Migration 0007 created tables without GRANTs for authenticated role; caused 'permission denied for table conversas' at test time",
+      "phase": "03"
+    },
+    {
+      "decision": "conversa-actions.tsx extracted as isolated Client Component",
+      "rationale": "Detail page is Server Component; action buttons need useTransition; extracted to keep page pure server",
+      "phase": "03"
+    }
+  ],
+  "uncommitted_files": [".planning/STATE.md"],
+  "next_action": "Run Plan 03-03: execute smoke tests suite. Read 03-03-PLAN.md first. Human pre-req: seed evolution_instances row for Fitness UNIC. Then: npx vitest run tests/smoke/",
+  "context_notes": "Plan 03-02 fully complete: 28 tests passing, next build clean, checkpoint approved by owner. Plan 03-03 is the final wave of Phase 3 — smoke tests + cutover checklist. Do NOT start 03-03 without evolution_instances seeded. Also: /chat-closure-extractor was cut short at 75% context — CHANGELOG, release notes, QA doc not yet generated; these can be done after 03-03."
+}
