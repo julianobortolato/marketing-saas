@@ -27,6 +27,10 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env.smoke
+
+# smoke test artifacts (contain agent responses — manual review only)
+tests/smoke/.identity-leak-report.json
 
 # vercel
 .vercel
