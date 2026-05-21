@@ -67,6 +67,7 @@ export function AppShell({ usuario, children }: AppShellProps) {
           <NavItem href="/dashboard/configuracoes" label="Configuracoes" />
           <NavItem href="/dashboard/leads" label="Leads" />
           <NavItem href="/dashboard/aprovacoes" label="Aprovacoes" />
+          <NavItem href="/dashboard/conversas" label="Conversas" />
           <NavItem href="/dashboard/conteudo" label="Conteudo" disabled />
           <NavItem href="/dashboard/campanhas" label="Campanhas" disabled />
           <NavItem href="/dashboard/inteligencia" label="Inteligencia" disabled />
