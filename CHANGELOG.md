@@ -53,3 +53,45 @@
 ### Security
 - Webhook valida assinatura antes de processar payload (anti-padrão do CLAUDE.md respeitado)
 - `tenant_id` derivado do token de webhook — nunca do payload externo
+# Changelog
+
+All notable changes to this project are documented in this file.
+Format based on [Keep a Changelog](https://keepachangelog.com).
+
+## [2026-05-21] Wave3-Tasks1-3 — SHA e216238
+
+### Added
+- Smoke suite 25 testes cobrindo ADR-MKT-001 §11 (webhook, kill switch, handoff, idempotência, HMAC, lead novo)
+- 3 helpers reutilizáveis em tests/smoke/helpers/
+- .identity-leak-report.json gerado automaticamente pelo smoke (gate ENGINE_VS_TENANT)
+- evolution_instances seed para Fitness UNIC (instance_name=iara_v2_staging, webhook_secret configurado)
+- Deploy Production em marketing-saas-nu.vercel.app com 8 env vars configuradas
+
+### Fixed
+- Seed trigger-aware (respeitando triggers de banco ao popular dados de teste)
+- Grants ai_usage_* (permissões faltando nas tabelas de auditoria)
+- Handoff pre-LLM (guardrail de desconto acionado antes da chamada OpenAI)
+
+### Security
+- Gate de contraste tenant Vértice aprovado: 10/10 conversas sem vazamento de identidade UNIC
+# Changelog
+
+All notable changes to this project are documented in this file.
+Format based on [Keep a Changelog](https://keepachangelog.com).
+
+## [2026-05-21] Wave3-Tasks1-3 — SHA e216238
+
+### Added
+- Smoke suite 25 testes cobrindo ADR-MKT-001 §11 (webhook, kill switch, handoff, idempotência, HMAC, lead novo)
+- 3 helpers reutilizáveis em tests/smoke/helpers/
+- .identity-leak-report.json gerado automaticamente pelo smoke (gate ENGINE_VS_TENANT)
+- evolution_instances seed para Fitness UNIC (instance_name=iara_v2_staging, webhook_secret configurado)
+- Deploy Production em marketing-saas-nu.vercel.app com 8 env vars configuradas
+
+### Fixed
+- Seed trigger-aware (respeitando triggers de banco ao popular dados de teste)
+- Grants ai_usage_* (permissões faltando nas tabelas de auditoria)
+- Handoff pre-LLM (guardrail de desconto acionado antes da chamada OpenAI)
+
+### Security
+- Gate de contraste tenant Vértice aprovado: 10/10 conversas sem vazamento de identidade UNIC
