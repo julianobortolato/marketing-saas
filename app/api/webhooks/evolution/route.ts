@@ -214,6 +214,36 @@ export async function POST(request: NextRequest) {
 
     const chatHistory = ((chatHistoryRaw as unknown[]) ?? []).reverse()
 
+    // ── Step 12b: Pre-LLM gatilhos_handoff check ──────────────────────────────
+    // If the incoming message matches a handoff trigger keyword (from academia_config.gatilhos_handoff),
+    // skip the LLM entirely and call rpc_handoff_humano immediately.
+    const gatilhosHandoff =
+      (academiaConfig as Record<string, unknown> | null)?.gatilhos_handoff as
+        | Record<string, boolean>
+        | null
+        | undefined
+    if (gatilhosHandoff && conteudo) {
+      const msgLower = (conteudo as string).toLowerCase()
+      const triggered = Object.entries(gatilhosHandoff).some(
+        ([keyword, active]) => active && msgLower.includes(keyword.toLowerCase()),
+      )
+      if (triggered) {
+        await admin.rpc('rpc_handoff_humano', {
+          p_tenant_id: tenantId as string,
+          p_conversa_id: conversaId,
+          p_motivo: 'gatilho_handoff_entrada',
+        })
+        const FALLBACK_HANDOFF =
+          'Já estou transferindo para um de nossos atendentes. Em breve alguém entrará em contato!'
+        await admin.rpc('rpc_persistir_resposta_bot', {
+          p_tenant_id: tenantId as string,
+          p_conversa_id: conversaId,
+          p_conteudo: FALLBACK_HANDOFF,
+        })
+        return NextResponse.json({ ok: true, fallback: 'gatilho_handoff' }, { status: 200 })
+      }
+    }
+
     // ── Step 13: Build system prompt ──────────────────────────────────────────
     const systemPrompt = buildSystemPrompt({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
