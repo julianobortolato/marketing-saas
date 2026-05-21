@@ -40,32 +40,50 @@ function randomSuffix(): string {
   return Math.random().toString(36).slice(2, 8)
 }
 
-// Creates a full isolated test tenant: tenants + academia_config + evolution_instances +
-// auth user + usuarios row. Returns credentials for user-authenticated RLS tests.
+// Creates a full isolated test tenant: auth user (handle_new_user trigger creates tenants +
+// usuarios automatically), then updates the auto-created tenant + inserts academia_config +
+// evolution_instances. Returns credentials for user-authenticated RLS tests.
 export async function seedTestTenant(): Promise<SeedResult> {
   const suffix = randomSuffix()
   const instanceName = `smoke_test_${suffix}`
   const userEmail = `smoke-test-${suffix}@smoke.internal`
-  const tenantSlug = `smoke-${suffix}`
 
-  const { data: tenant, error: tenantErr } = await adminClient
+  // Step 1: create auth user — handle_new_user trigger creates tenants + usuarios rows
+  const { data: authData, error: authErr } = await adminClient.auth.admin.createUser({
+    email: userEmail,
+    password: TEST_USER_PASSWORD,
+    email_confirm: true,
+    user_metadata: { nome: `Smoke Owner ${suffix}`, nome_academia: `Smoke Academia ${suffix}` },
+  })
+  if (authErr ?? !authData.user) {
+    throw new Error(`seedTestTenant: auth user creation failed: ${authErr?.message}`)
+  }
+
+  // Step 2: retrieve the tenant_id the trigger created
+  const { data: usuarioRow, error: usuarioFetchErr } = await adminClient
+    .from('usuarios')
+    .select('tenant_id')
+    .eq('id', authData.user.id)
+    .single()
+  if (usuarioFetchErr ?? !usuarioRow) {
+    throw new Error(`seedTestTenant: could not fetch auto-created tenant_id: ${usuarioFetchErr?.message}`)
+  }
+  const tenantId = (usuarioRow as { tenant_id: string }).tenant_id
+
+  // Step 3: update the auto-created tenant with smoke test values
+  const { error: tenantUpdateErr } = await adminClient
     .from('tenants')
-    .insert({
+    .update({
       nome: `Smoke Academia ${suffix}`,
-      slug: tenantSlug,
       iara_tenant_id: null,
       ia_habilitada: true,
       ia_limite_diario_usd: 0.10,
       plano: 'starter',
     })
-    .select('id')
-    .single()
+    .eq('id', tenantId)
+  if (tenantUpdateErr) throw new Error(`seedTestTenant: tenant update failed: ${tenantUpdateErr.message}`)
 
-  if (tenantErr ?? !tenant) {
-    throw new Error(`seedTestTenant: tenant insert failed: ${tenantErr?.message}`)
-  }
-  const tenantId = tenant.id as string
-
+  // Step 4: insert academia_config
   const { error: configErr } = await adminClient.from('academia_config').insert({
     tenant_id: tenantId,
     nome_academia: `Smoke Academia ${suffix}`,
@@ -85,6 +103,7 @@ export async function seedTestTenant(): Promise<SeedResult> {
   })
   if (configErr) throw new Error(`seedTestTenant: academia_config insert failed: ${configErr.message}`)
 
+  // Step 5: insert evolution_instances
   const { error: instanceErr } = await adminClient.from('evolution_instances').insert({
     tenant_id: tenantId,
     instance_name: instanceName,
@@ -95,52 +114,53 @@ export async function seedTestTenant(): Promise<SeedResult> {
   })
   if (instanceErr) throw new Error(`seedTestTenant: evolution_instances insert failed: ${instanceErr.message}`)
 
-  const { data: authData, error: authErr } = await adminClient.auth.admin.createUser({
-    email: userEmail,
-    password: TEST_USER_PASSWORD,
-    email_confirm: true,
-  })
-  if (authErr ?? !authData.user) {
-    throw new Error(`seedTestTenant: auth user creation failed: ${authErr?.message}`)
-  }
-
-  const { error: usuariosErr } = await adminClient.from('usuarios').insert({
-    id: authData.user.id,
-    tenant_id: tenantId,
-    role: 'owner',
-    nome: `Smoke Owner ${suffix}`,
-  })
-  if (usuariosErr) throw new Error(`seedTestTenant: usuarios insert failed: ${usuariosErr.message}`)
-
   return { tenantId, instanceName, userEmail, userPassword: TEST_USER_PASSWORD }
 }
 
 // Inserts a fictitious tenant "Academia Premium Vértice" for the anti-leak gate test.
 // Config is formal/navy/senhor-senhora treatment — zero references to Fitness UNIC.
+// Same trigger-aware pattern as seedTestTenant: create auth user first, then configure.
 export async function seedFictitiousTenant(): Promise<SeedResult> {
   const suffix = randomSuffix()
   const instanceName = `smoke_vertice_${suffix}`
   const userEmail = `smoke-vertice-${suffix}@smoke.internal`
-  const tenantSlug = `smoke-vertice-${suffix}`
 
-  const { data: tenant, error: tenantErr } = await adminClient
+  // Step 1: create auth user — handle_new_user trigger creates tenants + usuarios rows
+  const { data: authData, error: authErr } = await adminClient.auth.admin.createUser({
+    email: userEmail,
+    password: TEST_USER_PASSWORD,
+    email_confirm: true,
+    user_metadata: { nome: `Smoke Vértice Owner ${suffix}`, nome_academia: 'Smoke Academia Premium Vértice' },
+  })
+  if (authErr ?? !authData.user) {
+    throw new Error(`seedFictitiousTenant: auth user creation failed: ${authErr?.message}`)
+  }
+
+  // Step 2: retrieve the tenant_id the trigger created
+  const { data: usuarioRow, error: usuarioFetchErr } = await adminClient
+    .from('usuarios')
+    .select('tenant_id')
+    .eq('id', authData.user.id)
+    .single()
+  if (usuarioFetchErr ?? !usuarioRow) {
+    throw new Error(`seedFictitiousTenant: could not fetch auto-created tenant_id: ${usuarioFetchErr?.message}`)
+  }
+  const tenantId = (usuarioRow as { tenant_id: string }).tenant_id
+
+  // Step 3: update the auto-created tenant with Vértice values
+  const { error: tenantUpdateErr } = await adminClient
     .from('tenants')
-    .insert({
+    .update({
       nome: 'Smoke Academia Premium Vértice',
-      slug: tenantSlug,
       iara_tenant_id: null,
       ia_habilitada: true,
       ia_limite_diario_usd: 0.50,
       plano: 'pro',
     })
-    .select('id')
-    .single()
+    .eq('id', tenantId)
+  if (tenantUpdateErr) throw new Error(`seedFictitiousTenant: tenant update failed: ${tenantUpdateErr.message}`)
 
-  if (tenantErr ?? !tenant) {
-    throw new Error(`seedFictitiousTenant: tenant insert failed: ${tenantErr?.message}`)
-  }
-  const tenantId = tenant.id as string
-
+  // Step 4: insert academia_config (formal Vértice profile — zero UNIC references)
   const { error: configErr } = await adminClient.from('academia_config').insert({
     tenant_id: tenantId,
     nome_academia: 'Academia Premium Vértice',
@@ -169,6 +189,7 @@ export async function seedFictitiousTenant(): Promise<SeedResult> {
   })
   if (configErr) throw new Error(`seedFictitiousTenant: academia_config insert failed: ${configErr.message}`)
 
+  // Step 5: insert evolution_instances
   const { error: instanceErr } = await adminClient.from('evolution_instances').insert({
     tenant_id: tenantId,
     instance_name: instanceName,
@@ -178,22 +199,6 @@ export async function seedFictitiousTenant(): Promise<SeedResult> {
     ativo: true,
   })
   if (instanceErr) throw new Error(`seedFictitiousTenant: evolution_instances insert failed: ${instanceErr.message}`)
-
-  const { data: authData, error: authErr } = await adminClient.auth.admin.createUser({
-    email: userEmail,
-    password: TEST_USER_PASSWORD,
-    email_confirm: true,
-  })
-  if (authErr ?? !authData.user) {
-    throw new Error(`seedFictitiousTenant: auth user creation failed: ${authErr?.message}`)
-  }
-
-  await adminClient.from('usuarios').insert({
-    id: authData.user.id,
-    tenant_id: tenantId,
-    role: 'owner',
-    nome: `Smoke Vértice Owner ${suffix}`,
-  })
 
   return { tenantId, instanceName, userEmail, userPassword: TEST_USER_PASSWORD }
 }
