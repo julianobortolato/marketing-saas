@@ -30,13 +30,12 @@ export async function saveEditorialConfig(formData: unknown) {
     }
   }
 
-  // defense-in-depth: tenant_id set from fn_tenant_id() — never from client payload
+  // defense-in-depth: tenant_id from fn_tenant_id() — never from client payload
+  // UPDATE only: academia_config row always exists after Phase 1 onboarding DNA form
   const { error } = await supabase
     .from('academia_config')
-    .upsert(
-      { ...parsed.data, tenant_id: tenantId },
-      { onConflict: 'tenant_id' }
-    )
+    .update(parsed.data)
+    .eq('tenant_id', tenantId)
 
   if (error) return { error: error.message }
 

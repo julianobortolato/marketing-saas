@@ -1,6 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { assumirConversa, reativarAgente } from '../actions'
 
 interface ConversaActionsProps {
@@ -10,6 +11,7 @@ interface ConversaActionsProps {
 
 export function ConversaActions({ conversaId, iaAtiva }: ConversaActionsProps) {
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   return (
     <button
@@ -21,6 +23,7 @@ export function ConversaActions({ conversaId, iaAtiva }: ConversaActionsProps) {
           } else {
             await reativarAgente(conversaId)
           }
+          router.refresh()
         })
       }}
       className={[

@@ -32,10 +32,11 @@ const VALID_INPUT = {
   palavras_proibidas: ['desconto'],
 }
 
-function makeUpsertMock(upsertResult: { error: unknown }) {
-  const upsertMock = vi.fn().mockResolvedValue(upsertResult)
-  const fromMock = vi.fn().mockReturnValue({ upsert: upsertMock })
-  return { from: fromMock, upsertMock }
+function makeUpdateMock(updateResult: { error: unknown }) {
+  const eqMock = vi.fn().mockResolvedValue(updateResult)
+  const updateMock = vi.fn().mockReturnValue({ eq: eqMock })
+  const fromMock = vi.fn().mockReturnValue({ update: updateMock })
+  return { from: fromMock, updateMock, eqMock }
 }
 
 beforeEach(() => {
@@ -43,9 +44,9 @@ beforeEach(() => {
 })
 
 describe('saveEditorialConfig', () => {
-  it('upserts academia_config with tenant_id from fn_tenant_id and returns { success: true }', async () => {
+  it('updates academia_config filtered by tenant_id from fn_tenant_id and returns { success: true }', async () => {
     mockGetCurrentUsuario.mockResolvedValue(OWNER)
-    const { from, upsertMock } = makeUpsertMock({ error: null })
+    const { from, updateMock, eqMock } = makeUpdateMock({ error: null })
     const rpcMock = vi.fn().mockResolvedValue({ data: 'tenant-1', error: null })
     mockCreateClient.mockResolvedValue({ from, rpc: rpcMock } as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never)
 
@@ -53,15 +54,13 @@ describe('saveEditorialConfig', () => {
 
     expect(result).toEqual({ success: true })
     expect(rpcMock).toHaveBeenCalledWith('fn_tenant_id')
-    expect(upsertMock).toHaveBeenCalledWith(
-      expect.objectContaining({ tenant_id: 'tenant-1' }),
-      { onConflict: 'tenant_id' }
-    )
+    expect(updateMock).toHaveBeenCalledWith(expect.not.objectContaining({ tenant_id: expect.anything() }))
+    expect(eqMock).toHaveBeenCalledWith('tenant_id', 'tenant-1')
   })
 
   it('returns { error } without DB write when fn_tenant_id returns null', async () => {
     mockGetCurrentUsuario.mockResolvedValue(OWNER)
-    const { from } = makeUpsertMock({ error: null })
+    const { from } = makeUpdateMock({ error: null })
     const rpcMock = vi.fn().mockResolvedValue({ data: null, error: null })
     mockCreateClient.mockResolvedValue({ from, rpc: rpcMock } as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never)
 
@@ -74,7 +73,7 @@ describe('saveEditorialConfig', () => {
   it('returns { error: "Acesso negado." } for role=viewer without any DB call', async () => {
     mockGetCurrentUsuario.mockResolvedValue(VIEWER)
     const rpcMock = vi.fn()
-    const fromMock = vi.fn()
+    const { from: fromMock } = makeUpdateMock({ error: null })
     mockCreateClient.mockResolvedValue({ from: fromMock, rpc: rpcMock } as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never)
 
     const result = await saveEditorialConfig(VALID_INPUT)
@@ -84,9 +83,9 @@ describe('saveEditorialConfig', () => {
     expect(fromMock).not.toHaveBeenCalled()
   })
 
-  it('returns { error } when upsert fails', async () => {
+  it('returns { error } when update fails', async () => {
     mockGetCurrentUsuario.mockResolvedValue(OWNER)
-    const { from } = makeUpsertMock({ error: { message: 'duplicate key' } })
+    const { from } = makeUpdateMock({ error: { message: 'connection error' } })
     const rpcMock = vi.fn().mockResolvedValue({ data: 'tenant-1', error: null })
     mockCreateClient.mockResolvedValue({ from, rpc: rpcMock } as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never)
 
