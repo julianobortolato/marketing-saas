@@ -12,6 +12,26 @@ export interface AcademiaConfigRow {
   horarios: { text: string } | null
   planos: { text: string } | null
   criado_em: string
+  // Editorial columns (migration 0011)
+  caderno_editorial_escopo: string | null
+  caderno_editorial_tom: string | null
+  caderno_editorial_restricoes: string | null
+  caderno_editorial_objetivos: string[] | null
+  caderno_editorial_exemplos: string | null
+  palavras_proibidas: string[] | null
+  gatilhos_handoff: Record<string, boolean> | null
+  persona_cmo: string | null
+}
+
+export interface EditorialConfigRow {
+  caderno_editorial_escopo: string | null
+  caderno_editorial_tom: string | null
+  caderno_editorial_restricoes: string | null
+  caderno_editorial_objetivos: string[] | null
+  caderno_editorial_exemplos: string | null
+  palavras_proibidas: string[] | null
+  gatilhos_handoff: Record<string, boolean> | null
+  persona_cmo: string | null
 }
 
 /**
@@ -33,4 +53,22 @@ export async function getAcademiaConfig(): Promise<AcademiaConfigRow | null> {
   }
 
   return data as AcademiaConfigRow | null
+}
+
+export async function getEditorialConfig(): Promise<EditorialConfigRow | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('academia_config')
+    .select(
+      'caderno_editorial_escopo, caderno_editorial_tom, caderno_editorial_restricoes, caderno_editorial_objetivos, caderno_editorial_exemplos, palavras_proibidas, gatilhos_handoff, persona_cmo'
+    )
+    .maybeSingle()
+
+  if (error) {
+    console.error('[getEditorialConfig] error:', error.message)
+    return null
+  }
+
+  return data as EditorialConfigRow | null
 }
