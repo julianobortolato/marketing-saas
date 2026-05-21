@@ -25,8 +25,8 @@
 
 ### WhatsApp
 
-- [ ] **WHATS-01**: Agente WhatsApp responde automaticamente ao lead em menos de 5 minutos após entrada — exclusivo para tenants com `iara_tenant_id IS NULL`; tenants com IARA Systems recebem lead via bridge sem agente próprio
-- [ ] **WHATS-02**: Agente oferece agendamento de Aula Experimental e confirma data/horário no WhatsApp, atualizando status do lead para `agendado`
+- [x] **WHATS-01**: Agente WhatsApp responde automaticamente ao lead em menos de 5 minutos após entrada — exclusivo para tenants com `iara_tenant_id IS NULL`; tenants com IARA Systems recebem lead via bridge sem agente próprio
+- [x] **WHATS-02**: Agente oferece agendamento de Aula Experimental e confirma data/horário no WhatsApp, atualizando status do lead para `agendado`
 - [ ] **WHATS-03**: Dono pode assumir a conversa manualmente (handoff humano), desativando o agente para aquele lead
 
 ### Conteúdo
@@ -96,8 +96,8 @@
 | LEAD-01 | Phase 2 | Pending |
 | LEAD-02 | Phase 2 | Pending |
 | LEAD-03 | Phase 2 | Pending |
-| WHATS-01 | Phase 3 | Pending |
-| WHATS-02 | Phase 3 | Pending |
+| WHATS-01 | Phase 3 | Complete |
+| WHATS-02 | Phase 3 | Complete |
 | WHATS-03 | Phase 3 | Pending |
 | CONT-01 | Phase 4 | Pending |
 | CONT-02 | Phase 4 | Pending |

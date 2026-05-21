@@ -81,11 +81,11 @@ Plans:
   2. The agent proposes an Aula Experimental date/time in WhatsApp and, upon confirmation, updates the lead status to `agendado`
   3. Owner can flip a switch on a lead to take over the conversation manually, which stops the agent from sending further automated messages to that lead
 
-**Plans:** 3 plans (Sprint 1 schema already shipped in migrations 0006-0010; remaining work is Sprints 2-4)
+**Plans:** 1/3 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — Sprint 2 agent core slice: webhook 14-step pipeline + OpenAI tool-use loop + 5-block system prompt + 5 tool handlers + 7 guardrails (WHATS-01, WHATS-02)
+- [x] 03-01-PLAN.md — Sprint 2 agent core slice: webhook 14-step pipeline + OpenAI tool-use loop + 5-block system prompt + 5 tool handlers + 7 guardrails (WHATS-01, WHATS-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Foundation | 4/4 | Complete   | 2026-05-19 |
 | 2. Lead Pipeline + Aprovacoes | 0/4 | Not started | - |
-| 3. Agente WhatsApp | 0/3 | Not started | - |
+| 3. Agente WhatsApp | 1/3 | In Progress|  |
 | 4. Conteudo | 0/TBD | Not started | - |
 | 5. Campanhas | 0/TBD | Not started | - |
 | 6. Inteligencia Competitiva | 0/TBD | Not started | - |
