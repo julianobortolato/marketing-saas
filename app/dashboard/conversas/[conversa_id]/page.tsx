@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge'
 import { getConversaWithMessages } from '@/lib/queries/conversas'
 import { getAcademiaConfig } from '@/lib/queries/academia-config'
 import { ConversaActions } from './conversa-actions'
+import { ManualReplyForm } from './manual-reply-form'
 
 export const dynamic = 'force-dynamic'
 
@@ -109,6 +110,10 @@ export default async function ConversaDetailPage({ params }: PageProps) {
           })}
         </div>
       </div>
+
+      {!conversa.ia_ativa && (
+        <ManualReplyForm conversaId={conversa.id} />
+      )}
     </div>
   )
 }
