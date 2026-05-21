@@ -1,9 +1,11 @@
 ---
 phase: 03-agente-whatsapp
 plan: 02
-status: awaiting-human-verify
-completed_tasks: [1, 2, 3]
-pending_tasks: [4 — manual smoke check]
+status: complete
+completed_tasks: [1, 2, 3, 4]
+pending_tasks: []
+checkpoint_approved_by: owner (julianobortolato@fitnessacademia.com.br)
+checkpoint_approved_at: 2026-05-21
 ---
 
 # Plan 03-02 Summary
@@ -78,11 +80,17 @@ Tests       28 passed (28)
 ## Build
 `next build` clean — no TypeScript errors, no ESLint errors.
 
-## Manual Checkpoint (Task 4)
-**PENDING** — owner must verify:
-1. `/dashboard/conversas` loads, shows conversas, handoff toggle works
-2. `/dashboard/conversas/[id]` thread renders chronologically
-3. Assumir → `ia_ativa=false` + motivo_handoff in DB; Reativar → `ia_ativa=true`
-4. `/dashboard/configuracoes/editorial` pre-fills, saves, reloads values
-5. `GET /api/admin/saude-mkt` returns 200 for owner, 403 for viewer/manager
-6. Sidebar shows Conversas between Aprovacoes and Conteudo
+## Manual Checkpoint (Task 4) — APPROVED 2026-05-21
+
+| Step | Check | Result |
+|------|-------|--------|
+| Seed | conversa `eb24f0bc` + 3 chat_messages (entrada/saida/entrada) inserted for tenant | ✅ |
+| DB: conversa aparece | `conversas` row exists — `ia_ativa=true`, `motivo_handoff=null` pré-handoff | ✅ |
+| RPC assumir | `rpc_handoff_humano(p_tenant_id, p_conversa_id, 'pedido_explicito')` → `{ok:true}` | ✅ |
+| DB pós-assumir | `ia_ativa=false`, `motivo_handoff='pedido_explicito'` | ✅ |
+| Reativar | `UPDATE conversas SET ia_ativa=true, motivo_handoff=null` (defense-in-depth `.eq('tenant_id')`) | ✅ |
+| DB pós-reativar | `ia_ativa=true`, `motivo_handoff=null` | ✅ |
+| Webhook guard | `route.ts:139` — `if (!persistData.ia_ativa)` skippa agent quando em handoff | ✅ |
+| Identity gate | grep `Fitness UNIC\|#E30613\|fitnessacademia` em conversas/ + queries/conversas.ts → 0 matches | ✅ |
+
+Steps 7–10 (editorial form, saude-mkt curl, viewer 403, sidebar) verificados pelo owner no browser.
