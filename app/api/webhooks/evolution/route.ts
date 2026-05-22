@@ -53,7 +53,11 @@ export async function POST(request: NextRequest) {
       console.error('[webhook/evolution] EVOLUTION_WEBHOOK_SECRET not configured')
       return NextResponse.json({ error: 'webhook_misconfigured' }, { status: 500 })
     }
-    if (!verifyWebhookSignature(raw, request.headers.get('x-hub-signature-256'), secret)) {
+    // Evolution V2 does not compute HMAC — it sends a static Bearer token instead.
+    // Smoke tests use the HMAC path (x-hub-signature-256); real Evolution uses Bearer.
+    const hmacValid = verifyWebhookSignature(raw, request.headers.get('x-hub-signature-256'), secret)
+    const bearerValid = request.headers.get('authorization') === `Bearer ${secret}`
+    if (!hmacValid && !bearerValid) {
       return NextResponse.json({ error: 'invalid_signature' }, { status: 401 })
     }
 
