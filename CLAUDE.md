@@ -1,160 +1,472 @@
-# CLAUDE.md — marketing-saas
-> Instruções para o agente Code. Ler antes de qualquer ação.
-> Versão 1.2 — 20/mai/2026
+# CLAUDE.md — Regras pro Code no `marketing-saas` (Prisma)
 
-## Contexto do projeto
+> **Versão:** 1.0 — 26/mai/2026
+> **Para quem:** agente Code (Claude Code) trabalhando neste repo
+> **Owner:** Juliano Bortolato (não-dev)
+> **Localização canônica:** raiz do repo `marketing-saas/`
 
-SaaS de marketing autônomo para academias. CMO IA 24/7.
-Stack: Next.js 14 App Router + Supabase + Evolution API + OpenAI + Vercel.
-**Primeiro cliente:** Fitness UNIC (fitnessacademia.com.br) — academia do fundador.
+---
 
-## Identidade visual
+## 1. Identidade do projeto
 
-O SaaS é multi-tenant. **Não existe uma "marca do produto" hardcoded em código** — toda
-identidade visual (cores, tipografia, logo) é configurada por tenant.
+- **Produto:** Prisma — SaaS multi-tenant de marketing autônomo
+- **Vertical MVP:** fitness (preset, não identidade)
+- **Cliente #1:** Fitness UNIC (cobaia, **não** é o produto — ADR-MKT-006 + DOMAIN.md §1)
+- **Stack:** Next.js 14 + Supabase + GPT-4o + Vercel (Edge Runtime padrão)
+- **Repo:** `~/marketing-saas`
+- **Supabase ref:** `mdgdrevfpdvvjsccnecl`
 
-### Onde mora a configuração de tema
+---
 
-Tema visual vive nas colunas `academia_config.tema_*` (paleta, tipografia, URL do logo,
-slogan). Migration que cria essas colunas faz parte do Sprint 1 (mesmo que a UI só
-consuma no Sprint 3 — schema pronto antes da primeira tela).
+## 1.5 Mapa de execução autônoma
 
-### Tenant seed: Fitness UNIC
+Owner não é dev. Toda ação tem destinatário explícito declarado antes de executar (princípio 13 do perfil owner).
 
-O primeiro tenant é a Fitness UNIC, cliente piloto. As cores, tipografia e elementos
-visuais documentados em `Manual Identidade Visual.md` (ou caminho equivalente) são
-**dados de seed** desse tenant — não constantes do produto. Esses valores são inseridos
-em `academia_config` no provisionamento da UNIC, exatamente como serão inseridos os
-valores da próxima academia, da próxima, e assim por diante.
+### 1.5.1 Quem executa o quê
 
-### Como componentes consomem tema
+| Ação | Quem executa | Como |
+|---|---|---|
+| Migrations SQL | **Code (autônomo)** | `supabase db push` no terminal local |
+| Queries de inspeção (`SELECT * FROM ... LIMIT 5`) | **Code (autônomo) via MCP Supabase** | Tool MCP `supabase__sql` quando disponível; senão owner cola no SQL Editor |
+| Criar arquivo / refatorar código | **Code (autônomo)** | filesystem + `git` |
+| Smoke test via `curl` | **Code (autônomo)** | terminal local |
+| Configurar variável de env na Vercel | **Owner (manual)** | Dashboard Vercel → Settings → Environment Variables |
+| Configurar variável de env no Supabase | **Owner (manual)** | Dashboard Supabase → Settings → Edge Functions / Secrets |
+| OAuth callback URLs (Meta, Google) | **Owner (manual)** | Dashboards Meta/Google |
+| Conectar instância Evolution | **Owner (manual)** | Console Evolution self-hosted |
+| Rotacionar secret antigo | **Owner (manual) + Code (executa via API se disponível)** | Coordenado |
+| Aprovar PR / merge | **Owner (manual)** | GitHub web ou CLI |
 
-Componentes compartilhados (`components/`) **nunca** referenciam valor de tenant
-direto. Padrão obrigatório:
+### 1.5.2 MCP Supabase — execução autônoma de SQL
 
-- CSS variables carregadas no boot da rota `(dashboard)/[tenant_slug]/...` a partir
-  de `academia_config.tema_*`
-- Componentes consomem via `var(--brand-primary)`, `var(--font-display)` etc.
-- Tema fallback (para rotas públicas pré-login) é um tema neutro do produto, não as
-  cores de nenhum tenant específico
+**Quando MCP está disponível:**
+- Code roda inspeções, RPCs, e queries de leitura **sem pedir cópia-cola pro owner**
+- Migrations destrutivas (DROP, ALTER COLUMN com perda) — Code **anuncia + pausa** antes
+- Resultado da query volta inline no chat — owner não precisa abrir Supabase
 
-### Anti-padrões — PR rejeitada
+**Quando MCP NÃO está disponível** (fallback):
+- Code gera SQL pronto pra cópia-cola
+- Declara destinatário: "No SQL Editor do Supabase, cole isto:"
+- Owner cola, copia resultado, devolve no chat
 
-| Padrão proibido | Substituto correto |
+**Regra:** Code **sempre tenta MCP primeiro**. Fallback pra cópia-cola só após confirmar MCP indisponível. Princípio 10 do perfil owner — MCP-first.
+
+### 1.5.3 N8N / orquestradores externos — proibido
+
+**N8N, Make, Zapier, Pipedream — NÃO entram neste projeto.** Documentado em ADR-MKT-005 + AP-MKT-005-001.
+
+Execução autônoma neste repo é:
+- **Code** (autônomo) — código, migrations, queries
+- **Vercel Cron** (declarativo em `vercel.json`) — jobs periódicos do app
+- **Supabase pg_cron** (opcional, declarativo em migration) — apenas para jobs SQL-only
+
+Nenhum orquestrador externo. Toda lógica de fluxo vive no repo (auditável, versionável em Git).
+
+### 1.5.4 Tests autônomos
+
+| Tipo de teste | Executor | Onde |
+|---|---|---|
+| Smoke (`curl` em endpoint) | Code | `tests/smoke/*.sh` |
+| Schema check (SELECT LIMIT 5) | Code via MCP | inline |
+| RLS test inverso (acesso cross-tenant deve falhar) | Code | `tests/smoke/rls.sql` |
+| Pre-commit `next build` | Husky local | `.husky/pre-commit` |
+| Integration (Playwright, futuro) | CI Vercel | `.github/workflows/` ou Vercel |
+
+---
+
+## 2. Regras inegociáveis
+
+### 2.1 ENGINE_VS_TENANT (princípio universal)
+
+| Camada | O que é | Onde vive |
+|---|---|---|
+| Camada 1 — identidade de cliente individual | Nome, cor, fonte, tom de voz, slogan, lista de planos, vocabulário do tenant | **APENAS em `tenant_config.brand_manual`** |
+| Camada 2 — léxico da vertical | Termos do segmento (modalidade, AE, anamnese...) | Pode estar em código **se** vertical do projeto está documentada e gatilho objetivo de revisita registrado |
+
+**PR rejeitada se:**
+- Hex hardcoded de tenant em código compartilhado (`bg-[#E30613]`)
+- Nome de tenant em string literal de engine
+- Constante "neutra" com valor do cliente (`const TIPOGRAFIA_PADRAO = 'Syne'` quando é a fonte da UNIC)
+- Enum/tipo com nome de cliente (`enum Plano { UNIC_PERSONAL }`)
+- Path/filename com nome de cliente
+
+Leitura obrigatória: `docs/principles/ENGINE_VS_TENANT.md` + `.adrs/ADR-MKT-000.md` + `.adrs/ADR-MKT-006.md`.
+
+### 2.2 Multi-tenant em toda tabela
+
+```sql
+-- Padrão obrigatório em CADA tabela tenant-scoped
+CREATE TABLE <nome> (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  ...
+);
+
+ALTER TABLE <nome> ENABLE ROW LEVEL SECURITY;
+
+-- DUAL: PERMISSIVE + RESTRICTIVE (sempre os dois)
+CREATE POLICY <nome>_tenant_isolation ON <nome>
+  AS PERMISSIVE FOR ALL TO authenticated
+  USING (tenant_id = fn_tenant_id());
+
+CREATE POLICY <nome>_tenant_restrictive ON <nome>
+  AS RESTRICTIVE FOR ALL TO authenticated
+  USING (tenant_id IS NOT NULL AND tenant_id = fn_tenant_id());
+```
+
+### 2.3 RPCs usam `fn_tenant_id()` — nunca JWT direto
+
+```sql
+-- ✅ CORRETO
+CREATE FUNCTION rpc_foo() RETURNS ... AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM tabela WHERE tenant_id = fn_tenant_id();
+END $$;
+
+-- ❌ PROIBIDO
+CREATE FUNCTION rpc_foo() RETURNS ... AS $$
+BEGIN
+  RETURN QUERY SELECT * FROM tabela
+    WHERE tenant_id = (auth.jwt() ->> 'tenant_id')::UUID;
+END $$;
+```
+
+### 2.4 Migrations
+
+- **Nunca editar migration existente.** Sempre arquivo novo.
+- Padrão de nome: `YYYYMMDDHHMMSS_<descricao>.sql`
+- Aplicar via `supabase db push` (nunca SQL Editor sem rastreamento)
+- Antes de qualquer migration: `SELECT * FROM <tabela_alvo> LIMIT 5` pra confirmar schema atual
+
+### 2.5 Secrets
+
+- **Nunca em código.** Sempre em env.
+- **Nunca exibir** valor de secret em mensagem do chat — referenciar pelo nome
+- `vercel env pull` **não traz** sensitive (CRON_SECRET, OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY)
+- Chaves com caracteres especiais: editor de texto, **nunca `echo`**
+- Bloco com token/secret na mensagem: header CAPS LOCK obrigatório
+
+### 2.6 Persistir antes de enviar
+
+Padrão obrigatório em **toda rota** que toca API externa:
+
+```
+1. Receber payload
+2. Validar HMAC + idempotência
+3. PERSIST em banco (status 'pendente' ou 'recebida')
+4. Chamar API externa
+5. PERSIST resultado (atualiza status)
+6. Retornar HTTP
+```
+
+API externa **antes** do persist = AP-PERSIST-001 (PR rejeitada).
+
+### 2.7 Guardrails em código, nunca só no prompt
+
+```typescript
+// ❌ PROIBIDO: validação só no system prompt
+const systemPrompt = `... Nunca proponha desconto. Nunca use mais de 2 emojis. ...`;
+
+// ✅ CORRETO: validação determinística pós-LLM
+const resposta = await openai.chat.completions.create({...});
+if (contemPalavraProibida(resposta, brand_manual.tom_de_voz.palavras_proibidas)) {
+  await audit('guardrail_violado', { motivo: 'palavra_proibida' });
+  throw new GuardrailError('Resposta bloqueada');
+}
+```
+
+### 2.8 HMAC em todo webhook externo
+
+```typescript
+import crypto from 'crypto';
+
+function validarHMAC(body: string, signature: string, secret: string): boolean {
+  const expected = crypto.createHmac('sha256', secret).update(body).digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(`sha256=${expected}`)
+  );
+}
+```
+
+Aplicado em: `/api/agents/cmo`, `/api/webhooks/leads`. OAuth callbacks usam `state` param (CSRF).
+
+### 2.9 Idempotência + rate limit
+
+- Idempotência: `evolution_message_id UNIQUE` por tenant em `chat_messages`
+- Rate limit: Upstash Redis sliding window, chave `<remotejid>:<tenant_id>`, 10 msg/min
+
+### 2.10 Identidade visual (ADR-MKT-006)
+
+```tsx
+// ✅ Chrome do dashboard (sidebar, header, footer)
+<div className="bg-[var(--prisma-midnight)] text-[var(--prisma-ivory)]">
+
+// ✅ Componente que renderiza conteúdo de tenant (preview, wizard)
+<div style={{ background: 'var(--tenant-primary)' }}>
+
+// ❌ Hex hardcoded (PR rejeitada)
+<div className="bg-[#1A2E4A]">
+
+// ❌ Namespace --brand-* (descontinuado, ambíguo)
+<div className="bg-[var(--brand-primary)]">
+
+// ❌ --tenant-* em chrome genérico do dashboard (viola Camada 1)
+function Sidebar() {
+  return <div className="bg-[var(--tenant-primary)]">...</div>;
+}
+```
+
+**Heurística:** o componente seria diferente entre 2 tenants? → pode usar `--tenant-*`. Senão → só `--prisma-*`.
+
+---
+
+## 3. Anti-padrões com enforcement automatizado
+
+### 3.1 Detecção via grep (pre-commit ou code review)
+
+```bash
+# Hex hardcoded em código compartilhado
+grep -rE 'bg-\[#[0-9a-fA-F]{3,8}\]|text-\[#[0-9a-fA-F]{3,8}\]' app/ components/ \
+  --exclude-dir=node_modules
+
+# Namespace --brand-* descontinuado
+grep -rE '\-\-brand\-' app/ components/
+
+# auth.jwt() direto em RPC (sem fn_tenant_id)
+grep -rE "auth\.jwt\(\)\s*->>\s*'tenant_id'" supabase/migrations/
+
+# fs.readFileSync em rotas de produção
+grep -rE "fs\.readFileSync" app/api/
+
+# Token em texto plano em migration ou código
+grep -rE "(sk-|fb-|EAA[a-zA-Z0-9])" app/ lib/ supabase/migrations/
+```
+
+Cada hit = PR bloqueada até resolver.
+
+### 3.2 Pre-commit `next build` (AP-011 V2)
+
+```bash
+# .husky/pre-commit
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+pnpm next build || (echo "❌ next build falhou — commit bloqueado" && exit 1)
+```
+
+Custo: ~30s por commit. **Não pular nunca**, mesmo "commit pequeno".
+
+### 3.3 Lista canônica de anti-padrões
+
+#### Técnicos (não fazer)
+
+| Anti-padrão | Onde | Custo registrado |
+|---|---|---|
+| Identidade de tenant em código compartilhado | qualquer | 3-5 dias de débito (V2) |
+| `auth.jwt() ->> 'tenant_id'` em RPC | `supabase/migrations/` | Vaza tenant cross-policy |
+| Migration existente editada | `supabase/migrations/` | Schema drift inrastreável |
+| Query sem `tenant_id` no WHERE | `lib/queries/` | Vaza dado entre tenants |
+| `fs.readFileSync` em rota de produção | `app/api/` | Não roda em Edge; viola ENGINE_VS_TENANT no V2 |
+| `vercel env pull` após `.env.local` completo | local | Sobrescreve sensitive |
+| `echo` pra gravar chave com `$` ou `!` | local | Caractere especial vira shell expansion |
+| Token em mensagem de chat | chat | Vazamento de credencial |
+| Loop de 404 sem mudar abordagem | qualquer | >60min por violação (Green) |
+| Secret novo configurado antes do antigo ser rotacionado | env | Janela de exposição |
+| Deploy declarado ✅ sem evidência observável | qualquer | Bug em produção sem detecção |
+| Patch em prompt sem GET do estado atual | `prompts_agentes` | Sobrescreve mudança recente |
+| Endpoint novo sem `curl` isolado primeiro | `app/api/` | ~60min/violação (Green) |
+| Schema assumido sem `SELECT * FROM tabela LIMIT 5` | qualquer | Coluna inexistente em produção |
+
+#### Estratégicos (não fazer)
+
+| Anti-padrão | Por quê |
 |---|---|
-| `bg-[#E30613]` ou qualquer hex de tenant em componente | `bg-[var(--brand-primary)]` |
-| `font-family: 'Fonte-da-UNIC'` em CSS global | `font-family: var(--font-display)` |
-| Import direto de logo de tenant em componente | `<img src={tenant.logo_url} />` |
-| String "Fitness UNIC" hardcoded em copy de UI compartilhada | `{tenant.nome}` resolvido em runtime |
-| Constante "neutra" com valor de tenant: `export const COR_PADRAO = '#E30613'` | Mover para `academia_config.tema_primary` |
+| Trazer N8N de volta sem evidência objetiva | AP-MKT-005-001 (ADR-MKT-005 §5) |
+| Trazer código do Green (não só infra) | Mesma origem do anti-padrão acima |
+| Chat interno no dashboard | 3 tentativas, 0 funcionando |
+| Geração de imagem por IA do zero | Inconsistente com marca real do tenant |
+| Romantizar feature sem validar viabilidade técnica | Débito acumulado |
+| Prometer automação total sem progressão de confiança | UX rompida |
+| Pipeline multi-agente sem error handling entre etapas | Falha silenciosa |
+| Score/fórmula usada pra decisão sem validar empiricamente (30 dias) | Decisão baseada em fórmula errada |
 
-### Princípio fundante
+#### Produto (regras do bot CMO — em código, não no prompt)
 
-Esta seção operacionaliza o princípio universal `docs/principles/ENGINE_VS_TENANT.md`
-aplicado no `.adrs/ADR-MKT-000-engine-vs-tenant.md`. Em caso de dúvida sobre se algo
-pertence a `lib/` ou a `academia_config`, ler primeiro o princípio.
+| Regra | Onde |
+|---|---|
+| Máx 2 propostas de AE por conversa | Contador em `chat_messages` |
+| Nunca menu numerado (1, 2, 3) | Regex pós-LLM `/^\s*\d+[\.\)]/m` |
+| Insights com threshold fixo hardcoded | Sempre relativo ao histórico do tenant |
+| Bot assinar como "Prisma" | NUNCA — bot fala como tenant (ADR-MKT-006 §6) |
 
-Teste mental: substituir "Fitness UNIC" por "Academia Genérica X". Se o componente
-quebra, fica estranho, ou perde sentido visual — há vazamento de identidade Camada 1,
-PR rejeitada.
+---
 
-## Regras inegociáveis
+## 4. Comunicação com owner
 
-### Multi-tenant
-- TODA tabela tem `tenant_id UUID NOT NULL`
-- TODA query filtra por `tenant_id` — sem exceção
-- RLS obrigatória: política PERMISSIVE + RESTRICTIVE em toda tabela
-- RPC sensível: sempre `SECURITY DEFINER` + revalidar `tenant_id` internamente
+### 4.1 Owner não é dev
 
-### Banco
-- `SELECT * FROM tabela LIMIT 5` ANTES de qualquer DDL ou INSERT
-- Schema antes de código — nunca assumir estrutura de memória
-- Migrations: arquivo novo em `supabase/migrations/` — nunca editar migration existente
-- `fn_tenant_id()` e `fn_usuario_id()` em RPCs — nunca JWT direto
+Toda instrução com **destino explícito**:
 
-### Next.js
-- `next build` local antes de push — `tsc --noEmit` não detecta ESLint
-- `rm -rf .next` obrigatório ao copiar componente de outro projeto
-- Server Components por padrão — `'use client'` só quando necessário
-- Variáveis de ambiente públicas: `NEXT_PUBLIC_` prefix obrigatório
+- "No terminal do Mac: `cd ~/marketing-saas && ...`"
+- "No SQL Editor do Supabase: ..."
+- "No browser, abrir https://..."
+- "No Code (este chat): vou executar ..."
 
-### Segurança
-- Service role key: JAMAIS em componente cliente ou exposto em log
-- Webhooks externos: validar assinatura ANTES de processar payload
-- Secrets no chat: nunca. Header CAPS LOCK antes de qualquer bloco com token
+### 4.2 Padrões obrigatórios
 
-### Código
-- Blocos copy-paste prontos — sem placeholders soltos
-- Placeholder obrigatório: `<COLE_AQUI>` + instrução de onde achar
-- TypeScript strict — sem `any` sem justificativa
-- Comentários só onde a intenção não é óbvia pelo código
+- Comandos bash: sempre incluir `cd ~/marketing-saas` antes
+- Sem placeholders soltos: usar `<COLE_AQUI>` + onde achar o valor
+- Ser direto, sem bajular
+- Nunca declarar métrica sem fonte (linhas, custos, latência) — usar "~X (estimativa)"
+- Recomendar lib/serviço: 1 linha de explicação acessível **antes** da recomendação (princípio 27 do perfil owner)
 
-## Anti-padrões proibidos
+### 4.3 Confirmação prévia
 
-- Query sem `tenant_id` no WHERE
-- `auth.jwt() ->> 'tenant_id'` direto em RPC (retorna null silenciosamente)
-- INSERT direto do cliente em tabela sensível
-- `console.log` com dados de aluno ou token em produção
-- Assumir que `vercel env pull` traz CRON_SECRET ou OPENAI_API_KEY (não traz)
+Pausar **antes** de:
+- Migrations destrutivas (DROP, ALTER COLUMN com perda de dado)
+- Mudanças em RLS de tabelas em produção
+- Refactor que toca >5 arquivos
+- Decisões com bifurcação estratégica
 
-## Estrutura de pastas
+**Não pausar** pra:
+- Smoke tests, DRY_RUN, validação de schema
+- Build errors, lint fixes, seed data
+- Escolha entre libs equivalentes (escolher + 1 linha)
 
-Ver ARCHITECTURE.md — seção "Estrutura de pastas".
+---
 
-## Checklist antes de push
+## 5. Paralelismo de chats Code
+
+### 5.1 Regras gerais
+
+**Paralelizar quando:**
+- Arquivos diferentes
+- Sem dependência de schema
+- Frontend vs backend
+- Docs vs código
+
+**Não paralelizar quando:**
+- Mesmo arquivo
+- Ambos fazem DDL
+- Um depende do output do outro
+
+**Regra fixa:** 1 chat Code = 1 sprint. Renovar a cada sprint fechado ou 2h.
+
+### 5.2 Matriz de paralelização autorizada por sprint
+
+| Sprint | Pode paralelizar | Tem que ser serial | Por quê |
+|---|---|---|---|
+| **Sprint 0** | (a) Rename SQL + Sentry setup + Meta App Review (owner) — 3 trilhas independentes | HMAC + idempotência + rate limit no `/api/agents/cmo` — mesmo arquivo | App Review é owner manual (sem chat Code); Rename só DDL; Sentry só lib/config |
+| **Sprint 0.5 (dogfood)** | Nenhum — owner usando produto | Tudo serial | Feedback loop precisa ser linear |
+| **Liberação UNIC** | Nenhum — operação | Tudo serial | Produção, sem refactor |
+| **Fase 1** (onboarding refinado + /ajuda) | Wizard refactor + página /ajuda | — | Páginas independentes, sem schema |
+| **Fase 2** (manual editável) | Não — toca brand_manual e validação Zod no mesmo fluxo | Tudo serial | Mesmo JSONB schema |
+| **Fase 3** (banco imagens) | Galeria UI + bulk upload backend | RLS Storage | UI lê do mesmo endpoint, mas devs distintos |
+| **Fase 4** (bot refinado) | Follow-up cron + heurística degenerada + Google Calendar tool | Schema chat_messages | 3 áreas (cron, lib/agents, OAuth) isoladas |
+| **Fase 5** (gerador conteúdo) | Templates Satori + Tools do bot CMO + pipeline de seleção foto | Schema `posts` | Templates não dependem de tools |
+| **Fase 6** (publicação) | Zernio integration + Meta API direto + manual export | Schema `posts` | 3 camadas independentes |
+| **Fase 7** (dashboard ROI) | KPI components + cálculo ROI + relatório Resend | Schema `audit_log` queries | Frontend vs backend separados |
+
+### 5.3 Como abrir paralelo
+
+1. Owner declara: "Vou abrir 3 chats Code em paralelo: A, B, C"
+2. Para cada chat, briefing inclui:
+   - Sprint atual (referência ao ROADMAP)
+   - Arquivos que **este chat** vai tocar
+   - Arquivos que **outros chats em paralelo** estão tocando (não tocar)
+   - Critério de aceite isolado
+3. Cada chat só fecha quando seu critério de aceite passa
+4. Owner faz merge mental quando todos fecham (sequência: o que tem schema vai primeiro no `git push`)
+
+### 5.4 Anti-padrões de paralelização
+
+| Anti-padrão | Por quê |
+|---|---|
+| 2 chats fazendo migration ao mesmo tempo | Ordem de aplicação imprevisível, `supabase db push` falha |
+| 2 chats editando mesmo arquivo TS | Merge conflict garantido |
+| Chat B começa antes do chat A entregar dependência declarada | Chat B fica esperando, contexto satura |
+| Mais de 3 chats Code abertos simultaneamente | Custo cognitivo do owner explode |
+| Paralelo em Sprint 0.5 (dogfood) | Quebra feedback loop linear |
+
+---
+
+## 6. Estrutura de pastas (canônica)
+
+Vide `ARCHITECTURE.md` §14. Resumo:
 
 ```
-□ next build local passou sem erro?
-□ Toda nova tabela tem tenant_id + RLS?
-□ Toda nova RPC usa fn_tenant_id()?
-□ Secrets fora do código?
-□ Migration em arquivo novo (não editou existente)?
-□ git push executado e SHA confirmado?
+app/             # Next.js App Router
+components/      # UI (chrome=prisma, marca/posts=tenant)
+lib/             # Lógica de domínio (agents, supabase, validators)
+supabase/        # Migrations
+public/          # Assets (logo Prisma, fonts/)
+.adrs/           # ADRs do projeto
+docs/            # PRD, DOMAIN, ROADMAP, principles
+tests/           # Smoke tests
 ```
 
-## Variáveis de ambiente necessárias
+---
 
-```
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=          # nunca expor no cliente
+## 7. Variáveis de ambiente
 
-# OpenAI
-OPENAI_API_KEY=                     # não desce via vercel env pull
+Lista canônica em `ARCHITECTURE.md` §13. Onde achar cada uma:
 
-# Evolution API
-EVOLUTION_API_URL=
-EVOLUTION_API_KEY=
+| Categoria | Onde |
+|---|---|
+| Supabase | dashboard Supabase → Settings → API |
+| OpenAI | platform.openai.com → API keys |
+| Evolution | self-hosted, gerar via console Evolution |
+| Upstash | console.upstash.com → Redis → REST |
+| Sentry | sentry.io → projeto → SDK setup |
+| Meta App | developers.facebook.com → app → Settings → Basic |
+| Google OAuth | console.cloud.google.com → APIs & Services → Credentials |
+| Webhooks secrets | gerar local: `openssl rand -hex 32` |
 
-# Crons
-CRON_SECRET=                        # var de sistema Vercel — não desce via pull
+---
 
-# Opcional — bridge IARA
-IARA_SUPABASE_URL=
-IARA_SERVICE_ROLE_KEY=
-```
+## 8. Fluxo padrão de sprint
 
-## GSD Workflow
+1. **Sprint definido** — owner abre chat Code com briefing (objetivo + arquivos esperados + critério de aceite)
+2. **Inventário antes** — Code roda `git status`, lê `INVENTARIO_*` se existir
+3. **Schema check** — `SELECT * FROM <tabela> LIMIT 5` antes de qualquer query nova
+4. **Migration** — arquivo novo, `supabase db push`, RLS dual obrigatório
+5. **Implementação** — TypeScript com Zod nos boundaries
+6. **Smoke test** — `curl` isolado ou test em `tests/smoke/`
+7. **Pre-commit `next build`** — bloqueia commit com erro
+8. **Critério de aceite** — checklist binário (passa / não passa)
+9. **Sprint encerrado** — chat Code é descartado
 
-Este projeto usa Get Shit Done (GSD) para planejamento e execução.
+---
 
-**Artefatos de planejamento:** `.planning/`
-- `PROJECT.md` — contexto e decisões do projeto
-- `REQUIREMENTS.md` — 21 requisitos v1 com REQ-IDs
-- `ROADMAP.md` — 6 fases, modo Vertical MVP
-- `STATE.md` — estado atual e progresso
-- `config.json` — preferências de workflow (modo: interactive, granularity: standard)
+## 9. Glossário
 
-**Comandos GSD:**
-- `/gsd:discuss-phase N` — discutir abordagem antes de planejar
-- `/gsd:plan-phase N` — criar plano de execução para a fase N
-- `/gsd:execute-phase N` — executar o plano
-- `/gsd:verify-work` — verificar se entregáveis batem com os critérios
-- `/gsd:progress` — ver estado atual do projeto
+- **Prisma** = produto
+- **Tenant** = cliente
+- **Fitness UNIC** = primeiro tenant (não é o produto, não é a marca)
+- **brand_manual** = JSONB de identidade do tenant em `tenant_config`
+- **fn_tenant_id()** = função SQL canônica
+- **RLS dual** = PERMISSIVE + RESTRICTIVE em toda tabela
+- **Edge Runtime** = runtime padrão pra rotas de agente (sem cold start)
 
-**Regras GSD para este projeto:**
-- Antes de qualquer fase: ler `ROADMAP.md` e `REQUIREMENTS.md` para confirmar escopo
-- Commits atômicos por tarefa — nunca batch de mudanças não relacionadas
-- Fase só é "completa" quando todos os Success Criteria são verdadeiros, não quando as tarefas estão feitas
-- Fase 4 (Conteúdo): CONT-01..03 podem ser entregues sem CONT-04 se Meta Graph API ainda não aprovada
+Glossário completo: `docs/DOMAIN.md`.
+
+---
+
+## 10. Referências cruzadas
+
+| Doc | O que tem |
+|---|---|
+| `docs/PRD.md` | O quê + por quê do produto |
+| `docs/ARCHITECTURE.md` | Stack, schemas SQL, fluxos técnicos |
+| `docs/DOMAIN.md` | Vocabulário, roles, estados, convenções |
+| `docs/ROADMAP.md` | Sequência de sprints |
+| `docs/principles/ENGINE_VS_TENANT.md` | Princípio universal |
+| `.adrs/ADR-MKT-000.md` | ENGINE_VS_TENANT aplicado ao Prisma |
+| `.adrs/ADR-MKT-001.md` | Arquitetura síncrona prompt-first |
+| `.adrs/ADR-MKT-003.md` | Satori HTML→PNG |
+| `.adrs/ADR-MKT-005.md` | Evolution direto sem N8N |
+| `.adrs/ADR-MKT-006.md` | Prisma Design System v1 |
+
+---
+
+*Fim do CLAUDE.md v1.0.*
