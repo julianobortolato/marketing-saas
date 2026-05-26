@@ -470,3 +470,12 @@ Glossário completo: `docs/DOMAIN.md`.
 ---
 
 *Fim do CLAUDE.md v1.0.*
+
+## 11. Skills e comandos
+
+| Comando | Quando usar | Skill |
+|---|---|---|
+| `/sprint-preview <sprint>` | Antes de executar qualquer sprint — revisão sob 4 lentes (Desempenho, Segurança, Custo, Manutenção) | `~/.claude/skills/dev-senior-review/SKILL.md` |
+
+**Regra:** todo chat Code que inicia um sprint novo começa com `/sprint-preview <nome-do-sprint>` antes de qualquer implementação.
+
