@@ -1,3 +1,78 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+Format based on [Keep a Changelog](https://keepachangelog.com).
+
+## [2026-05-26] docs-canonicos-prisma-v1 — SHA 2e12be2
+
+### Added
+- `docs/ARCHITECTURE.md`: arquitetura v1.0 do Prisma (stack, estrutura de pastas, padrões de multi-tenancy)
+- `docs/DOMAIN.md`: domínio do negócio v1.0 (fitness, fluxos, perfis de usuário)
+- `docs/ROADMAP.md`: roadmap v1.0 (6 fases Vertical MVP)
+- `docs/PRD.md`: PRD v2.4 (requisitos funcionais e não-funcionais)
+- `.adrs/ADR-MKT-001.md`: ADR agente WhatsApp v1.0 canônico
+- `.adrs/ADR-MKT-003.md`: ADR modelo de dados v1.0
+- `.adrs/ADR-MKT-005.md`: ADR orquestração v1.0 (sem N8N/Make/Zapier)
+- `.adrs/ADR-MKT-006.md`: ADR engine vs tenant v1.0
+
+### Changed
+- `CLAUDE.md`: substituído por versão v1.0 canônica — produto Prisma documentado, seção de execução autônoma expandida (mapa 1.5 quem-executa-o-quê), MCP-first, guardrails e HMAC como seções dedicadas
+
+---
+
+## [2026-05-23] wave3-cutover-auth — SHA 319f543
+
+### Changed
+- Webhook `/api/webhooks/evolution` aceita 3 paths de autenticação em ordem de prioridade: HMAC `x-hub-signature-256` (smoke tests), `Authorization: Bearer <secret>` (fallback), `?secret=` query param na URL (Evolution V2 — único path que persiste)
+- `EVOLUTION_WEBHOOK_SECRET` rotacionado em Vercel Production, `.env.smoke`, e `evolution_instances.webhook_secret`
+
+### Security
+- Secret rotacionado preventivamente após exposição em ambiente de desenvolvimento
+
+---
+
+## [2026-05-21] wave3-task5-uat — SHA 32192b1
+
+### Added
+- Campo de resposta manual no rodapé de `/dashboard/conversas/[id]` (só aparece quando `ia_ativa=false`)
+- `enviarMensagemManual` server action: persist-before-send via `rpc_persistir_resposta_bot` + Evolution API send + `status_envio` enviada/falhou
+- `ManualReplyForm` Client Component: textarea + botão Enviar, Enter para enviar, Shift+Enter para nova linha
+
+### Changed
+- `conversa-actions.tsx`: `useState` local para update otimista do botão Assumir/Reativar — `router.refresh()` passa a ser sincronização de background, não fonte de verdade da UI
+- `editorial/actions.ts`: `upsert` → `update(.eq tenant_id)` — evita `NOT NULL` em `nome_academia` ao editar colunas editoriais parciais
+
+### Fixed
+- Botão "Reativar IA" permanecia em estado Reativar após clicar (props do Server Component não atualizavam Client Component de forma síncrona via `router.refresh()` sozinho)
+- `saveEditorialConfig` falhava com `NOT NULL constraint on nome_academia` em tenant sem academia_config row completo
+- Script `"test"` ausente no `package.json` (vitest rodava smoke tests junto com unit tests sem `.env.smoke`)
+
+### Gates passados
+- 56/56 unit tests passando
+- `next build` limpo
+- UAT Phase 3: testes 1–8 passados; testes 9–11 (live traffic) aguardando cutover Stage 1
+
+---
+
+## [2026-05-21] Wave3-Tasks1-3 — SHA e216238
+
+### Added
+- Smoke suite 25 testes cobrindo ADR-MKT-001 §11 (webhook, kill switch, handoff, idempotência, HMAC, lead novo)
+- 3 helpers reutilizáveis em tests/smoke/helpers/
+- .identity-leak-report.json gerado automaticamente pelo smoke (gate ENGINE_VS_TENANT)
+- evolution_instances seed para Fitness UNIC (instance_name=iara_v2_staging, webhook_secret configurado)
+- Deploy Production em marketing-saas-nu.vercel.app com 8 env vars configuradas
+
+### Fixed
+- Seed trigger-aware (respeitando triggers de banco ao popular dados de teste)
+- Grants ai_usage_* (permissões faltando nas tabelas de auditoria)
+- Handoff pre-LLM (guardrail de desconto acionado antes da chamada OpenAI)
+
+### Security
+- Gate de contraste tenant Vértice aprovado: 10/10 conversas sem vazamento de identidade UNIC
+
+---
+
 ## [2026-05-20] Fase 3 Sprint 1 — Schema WhatsApp + IA (migrations 0006–0010)
 
 ### Added
@@ -53,45 +128,3 @@
 ### Security
 - Webhook valida assinatura antes de processar payload (anti-padrão do CLAUDE.md respeitado)
 - `tenant_id` derivado do token de webhook — nunca do payload externo
-# Changelog
-
-All notable changes to this project are documented in this file.
-Format based on [Keep a Changelog](https://keepachangelog.com).
-
-## [2026-05-21] Wave3-Tasks1-3 — SHA e216238
-
-### Added
-- Smoke suite 25 testes cobrindo ADR-MKT-001 §11 (webhook, kill switch, handoff, idempotência, HMAC, lead novo)
-- 3 helpers reutilizáveis em tests/smoke/helpers/
-- .identity-leak-report.json gerado automaticamente pelo smoke (gate ENGINE_VS_TENANT)
-- evolution_instances seed para Fitness UNIC (instance_name=iara_v2_staging, webhook_secret configurado)
-- Deploy Production em marketing-saas-nu.vercel.app com 8 env vars configuradas
-
-### Fixed
-- Seed trigger-aware (respeitando triggers de banco ao popular dados de teste)
-- Grants ai_usage_* (permissões faltando nas tabelas de auditoria)
-- Handoff pre-LLM (guardrail de desconto acionado antes da chamada OpenAI)
-
-### Security
-- Gate de contraste tenant Vértice aprovado: 10/10 conversas sem vazamento de identidade UNIC
-# Changelog
-
-All notable changes to this project are documented in this file.
-Format based on [Keep a Changelog](https://keepachangelog.com).
-
-## [2026-05-21] Wave3-Tasks1-3 — SHA e216238
-
-### Added
-- Smoke suite 25 testes cobrindo ADR-MKT-001 §11 (webhook, kill switch, handoff, idempotência, HMAC, lead novo)
-- 3 helpers reutilizáveis em tests/smoke/helpers/
-- .identity-leak-report.json gerado automaticamente pelo smoke (gate ENGINE_VS_TENANT)
-- evolution_instances seed para Fitness UNIC (instance_name=iara_v2_staging, webhook_secret configurado)
-- Deploy Production em marketing-saas-nu.vercel.app com 8 env vars configuradas
-
-### Fixed
-- Seed trigger-aware (respeitando triggers de banco ao popular dados de teste)
-- Grants ai_usage_* (permissões faltando nas tabelas de auditoria)
-- Handoff pre-LLM (guardrail de desconto acionado antes da chamada OpenAI)
-
-### Security
-- Gate de contraste tenant Vértice aprovado: 10/10 conversas sem vazamento de identidade UNIC
