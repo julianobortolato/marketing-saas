@@ -31,9 +31,9 @@ export async function saveEditorialConfig(formData: unknown) {
   }
 
   // defense-in-depth: tenant_id from fn_tenant_id() — never from client payload
-  // UPDATE only: academia_config row always exists after Phase 1 onboarding DNA form
+  // UPDATE only: tenant_config row always exists after Phase 1 onboarding DNA form
   const { error } = await supabase
-    .from('academia_config')
+    .from('tenant_config')
     .update(parsed.data)
     .eq('tenant_id', tenantId)
 

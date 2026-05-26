@@ -18,7 +18,7 @@
  *   9. Skip if fromMe=true (outbound echo)
  *  10. Read tenant row (iara_tenant_id check + ia_habilitada check)
  *  11. ia_habilitada=false → send fallback, return 200
- *  12. Load academia_config + chat history
+ *  12. Load tenant_config + chat history
  *  13. Build system prompt
  *  14. OpenAI tool-use loop
  *  15. Guardrails
@@ -36,8 +36,7 @@ import { buildSystemPrompt } from '@/lib/agents/cmo/system-prompt'
 import { cmoTools } from '@/lib/agents/cmo/tools'
 import { applyGuardrails } from '@/lib/agents/cmo/guardrails'
 
-// node:crypto requires the Node.js runtime (not Edge)
-export const runtime = 'nodejs'
+export const runtime = 'edge'
 
 const FALLBACK_IA_DESABILITADA =
   'Recebi sua mensagem. Em breve um atendente vai te responder.'
@@ -58,7 +57,7 @@ export async function POST(request: NextRequest) {
     //   1. HMAC x-hub-signature-256 — used by smoke tests
     //   2. Authorization: Bearer <secret> — used if Evolution supports custom headers
     //   3. ?secret=<value> query param — fallback for Evolution V2 which saves URL as-is
-    const hmacValid = verifyWebhookSignature(raw, request.headers.get('x-hub-signature-256'), secret)
+    const hmacValid = await verifyWebhookSignature(raw, request.headers.get('x-hub-signature-256'), secret)
     const bearerValid = request.headers.get('authorization') === `Bearer ${secret}`
     const querySecret = request.nextUrl.searchParams.get('secret')
     const queryValid = querySecret !== null && querySecret === secret
@@ -201,9 +200,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, fallback: 'ia_desabilitada' }, { status: 200 })
     }
 
-    // ── Step 12: Load academia_config + last 20 chat_messages ─────────────────
+    // ── Step 12: Load tenant_config + last 20 chat_messages ──────────────────
     const { data: academiaConfig } = await admin
-      .from('academia_config')
+      .from('tenant_config')
       .select(
         'nome_academia, bairro, cidade, tom_de_voz, diferenciais, horarios, planos,' +
           'caderno_editorial_escopo, caderno_editorial_tom, caderno_editorial_restricoes,' +
@@ -224,7 +223,7 @@ export async function POST(request: NextRequest) {
     const chatHistory = ((chatHistoryRaw as unknown[]) ?? []).reverse()
 
     // ── Step 12b: Pre-LLM gatilhos_handoff check ──────────────────────────────
-    // If the incoming message matches a handoff trigger keyword (from academia_config.gatilhos_handoff),
+    // If the incoming message matches a handoff trigger keyword (from tenant_config.gatilhos_handoff),
     // skip the LLM entirely and call rpc_handoff_humano immediately.
     const gatilhosHandoff =
       (academiaConfig as Record<string, unknown> | null)?.gatilhos_handoff as

@@ -11,7 +11,7 @@ import {
 /**
  * Dashboard overview hub — Server Component.
  *
- * Welcome card state (no academia_config): shows CTA to configure.
+ * Welcome card state (no tenant_config): shows CTA to configure.
  * Configured state (row exists): shows 3 placeholder counter cards.
  * Top bar: "VISAO GERAL" + tenant name per UI-SPEC § Screen /dashboard/overview.
  */
@@ -36,7 +36,7 @@ export default async function OverviewPage() {
       {/* Main content */}
       <div className="flex-1 overflow-auto p-6">
         {!config ? (
-          /* Welcome card — no academia_config yet */
+          /* Welcome card — no tenant_config yet */
           <Card className="border-[#E2E8F0] bg-[#F8FAFC] p-6">
             <CardHeader className="px-0 pt-0 pb-4">
               <CardTitle className="text-xl font-bold text-[#0F172A]">
@@ -57,7 +57,7 @@ export default async function OverviewPage() {
             </CardContent>
           </Card>
         ) : (
-          /* Counter cards — academia_config exists */
+          /* Counter cards — tenant_config exists */
           <div className="grid grid-cols-3 gap-4">
             <Card className="border-[#E2E8F0] bg-[#F8FAFC] p-4">
               <CardHeader className="px-0 pt-0 pb-2">

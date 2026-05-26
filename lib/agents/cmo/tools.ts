@@ -201,10 +201,10 @@ async function handleConsultarDisponibilidade(
   const parsed = consultarDisponibilidadeSchema.safeParse(args)
   if (!parsed.success) return { erro: 'validation_failed' }
 
-  // Pure read from academia_config.horarios for the given day
+  // Pure read from tenant_config.horarios for the given day
   // Returns available slots based on the schedule stored per tenant
   const { data, error } = await context.supabase
-    .from('academia_config')
+    .from('tenant_config')
     .select('horarios')
     .eq('tenant_id', context.tenantId) // defense-in-depth on top of RLS
     .single()

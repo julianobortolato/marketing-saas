@@ -44,7 +44,7 @@ beforeEach(() => {
 })
 
 describe('saveEditorialConfig', () => {
-  it('updates academia_config filtered by tenant_id from fn_tenant_id and returns { success: true }', async () => {
+  it('updates tenant_config filtered by tenant_id from fn_tenant_id and returns { success: true }', async () => {
     mockGetCurrentUsuario.mockResolvedValue(OWNER)
     const { from, updateMock, eqMock } = makeUpdateMock({ error: null })
     const rpcMock = vi.fn().mockResolvedValue({ data: 'tenant-1', error: null })

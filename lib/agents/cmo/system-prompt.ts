@@ -8,7 +8,7 @@
  * Every dynamic value MUST come from academiaConfig or chatHistory params.
  */
 
-/** Minimal shape of academia_config columns needed for prompt assembly. */
+/** Minimal shape of tenant_config columns needed for prompt assembly. */
 export interface AcademiaConfigForPrompt {
   tenant_id: string
   nome_academia: string
@@ -28,7 +28,7 @@ export interface AcademiaConfigForPrompt {
   palavras_proibidas?: string[] | null
   gatilhos_handoff?: Record<string, unknown> | null
   persona_cmo?: string | null
-  // Other fields from AcademiaConfigRow that may be present
+  // Other fields from tenant_config that may be present
   [key: string]: unknown
 }
 
@@ -47,7 +47,7 @@ export interface ChatMessage {
 
 /**
  * Pure function — never throws.
- * Assembles the 5-block system prompt from academia_config and the last 20 chat messages.
+ * Assembles the 5-block system prompt from tenant_config and the last 20 chat messages.
  * No hardcoded tenant strings — all dynamic values come from params.
  */
 export function buildSystemPrompt(params: {

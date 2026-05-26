@@ -35,7 +35,7 @@ export interface EditorialConfigRow {
 }
 
 /**
- * Returns the current tenant's academia_config row or null.
+ * Returns the current tenant's tenant_config row or null.
  * RLS scopes the query to the authenticated user's tenant — no tenant_id
  * is passed from app code (CLAUDE.md: tenant_id never trusted from client).
  */
@@ -43,7 +43,7 @@ export async function getAcademiaConfig(): Promise<AcademiaConfigRow | null> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('academia_config')
+    .from('tenant_config')
     .select('*')
     .maybeSingle()
 
@@ -59,7 +59,7 @@ export async function getEditorialConfig(): Promise<EditorialConfigRow | null> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from('academia_config')
+    .from('tenant_config')
     .select(
       'caderno_editorial_escopo, caderno_editorial_tom, caderno_editorial_restricoes, caderno_editorial_objetivos, caderno_editorial_exemplos, palavras_proibidas, gatilhos_handoff, persona_cmo'
     )

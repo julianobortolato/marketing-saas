@@ -172,7 +172,7 @@ describe('buildSystemPrompt', () => {
     expect(result).toContain('[BLOCO 5')
   })
 
-  it('should interpolate academia_config.nome_academia in Block 2', () => {
+  it('should interpolate tenant_config.nome_academia in Block 2', () => {
     const result = buildSystemPrompt({ academiaConfig: baseAcademiaConfig, chatHistory: [] })
     expect(result).toContain('Academia Teste XYZ')
   })

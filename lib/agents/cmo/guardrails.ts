@@ -23,10 +23,10 @@ const DESCONTO_REGEX = /\b(desconto|cupom|promo[çc][aã]o|mais barato)\b/i
 /**
  * Context passed to applyGuardrails.
  *
- * - palavrasProibidas: list from academia_config.palavras_proibidas (TEXT[])
+ * - palavrasProibidas: list from tenant_config.palavras_proibidas (TEXT[])
  * - nomesProprios: list of staff/brand names the LLM should not mention
- * - horarios: academia_config.horarios (JSON blob)
- * - planos: academia_config.planos (JSON blob) — used by Preço guardrail
+ * - horarios: tenant_config.horarios (JSON blob)
+ * - planos: tenant_config.planos (JSON blob) — used by Preço guardrail
  * - toolUseIterations: current iteration count in the tool-use loop
  */
 export interface GuardrailContext {

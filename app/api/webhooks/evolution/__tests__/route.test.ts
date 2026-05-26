@@ -134,7 +134,7 @@ function setupDefaultFrom(from: ReturnType<typeof vi.fn>) {
         iara_tenant_id: null,
       })
     }
-    if (table === 'academia_config') {
+    if (table === 'tenant_config') {
       return singleChain({
         nome_academia: 'Academia Teste',
         horarios: { text: 'Seg-Sex 6h-22h' },

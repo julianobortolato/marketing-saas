@@ -14,7 +14,7 @@ export async function saveAcademiaConfig(formData: unknown) {
 
   // Resolve tenant_id server-side.
   // RLS WITH CHECK only validates — it does NOT inject tenant_id.
-  // academia_config.tenant_id is NOT NULL, so it must be supplied explicitly.
+  // tenant_config.tenant_id is NOT NULL, so it must be supplied explicitly.
   // (CLAUDE.md inegociável: tenant_id NEVER from client payload)
   const { data: tenantId } = await supabase.rpc('fn_tenant_id')
   if (!tenantId) {
@@ -34,7 +34,7 @@ export async function saveAcademiaConfig(formData: unknown) {
     ? { text: parsed.data.planos }
     : null
 
-  const { error } = await supabase.from('academia_config').upsert(
+  const { error } = await supabase.from('tenant_config').upsert(
     {
       ...parsed.data,
       tenant_id: tenantId, // set ONLY from fn_tenant_id() — never from the client payload
