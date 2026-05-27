@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/gerar-posts",
+      "schedule": "0 11 * * 1"
+    }
+  ]
+}
