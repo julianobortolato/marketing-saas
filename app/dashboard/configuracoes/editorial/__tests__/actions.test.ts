@@ -9,6 +9,8 @@ import { saveEditorialConfig } from '../actions'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUsuario } from '@/lib/queries/usuario'
 
+type MockSupabase = Awaited<ReturnType<typeof createClient>>
+
 const mockCreateClient = vi.mocked(createClient)
 const mockGetCurrentUsuario = vi.mocked(getCurrentUsuario)
 
@@ -48,7 +50,7 @@ describe('saveEditorialConfig', () => {
     mockGetCurrentUsuario.mockResolvedValue(OWNER)
     const { from, updateMock, eqMock } = makeUpdateMock({ error: null })
     const rpcMock = vi.fn().mockResolvedValue({ data: 'tenant-1', error: null })
-    mockCreateClient.mockResolvedValue({ from, rpc: rpcMock } as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never)
+    mockCreateClient.mockResolvedValue({ from, rpc: rpcMock } as unknown as MockSupabase)
 
     const result = await saveEditorialConfig(VALID_INPUT)
 
@@ -62,7 +64,7 @@ describe('saveEditorialConfig', () => {
     mockGetCurrentUsuario.mockResolvedValue(OWNER)
     const { from } = makeUpdateMock({ error: null })
     const rpcMock = vi.fn().mockResolvedValue({ data: null, error: null })
-    mockCreateClient.mockResolvedValue({ from, rpc: rpcMock } as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never)
+    mockCreateClient.mockResolvedValue({ from, rpc: rpcMock } as unknown as MockSupabase)
 
     const result = await saveEditorialConfig(VALID_INPUT)
 
@@ -74,7 +76,7 @@ describe('saveEditorialConfig', () => {
     mockGetCurrentUsuario.mockResolvedValue(VIEWER)
     const rpcMock = vi.fn()
     const { from: fromMock } = makeUpdateMock({ error: null })
-    mockCreateClient.mockResolvedValue({ from: fromMock, rpc: rpcMock } as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never)
+    mockCreateClient.mockResolvedValue({ from: fromMock, rpc: rpcMock } as unknown as MockSupabase)
 
     const result = await saveEditorialConfig(VALID_INPUT)
 
@@ -87,7 +89,7 @@ describe('saveEditorialConfig', () => {
     mockGetCurrentUsuario.mockResolvedValue(OWNER)
     const { from } = makeUpdateMock({ error: { message: 'connection error' } })
     const rpcMock = vi.fn().mockResolvedValue({ data: 'tenant-1', error: null })
-    mockCreateClient.mockResolvedValue({ from, rpc: rpcMock } as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never)
+    mockCreateClient.mockResolvedValue({ from, rpc: rpcMock } as unknown as MockSupabase)
 
     const result = await saveEditorialConfig(VALID_INPUT)
 

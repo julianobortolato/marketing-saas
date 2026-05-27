@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { NextRequest } from 'next/server'
 
 vi.mock('server-only', () => ({}))
 
@@ -14,6 +13,8 @@ import { GET } from '../route'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUsuario } from '@/lib/queries/usuario'
 import { buildSaudeMktPayload } from '@/lib/queries/saude-mkt'
+
+type MockSupabase = Awaited<ReturnType<typeof createClient>>
 
 const mockCreateClient = vi.mocked(createClient)
 const mockGetCurrentUsuario = vi.mocked(getCurrentUsuario)
@@ -56,10 +57,6 @@ function makeAuthMock(user: { id: string } | null, error: unknown = null) {
   }
 }
 
-function makeRequest() {
-  return new NextRequest('http://localhost:3000/api/admin/saude-mkt')
-}
-
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -67,10 +64,10 @@ beforeEach(() => {
 describe('GET /api/admin/saude-mkt', () => {
   it('returns 401 when no session (auth error)', async () => {
     mockCreateClient.mockResolvedValue(
-      makeAuthMock(null, { message: 'not authenticated' }) as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never
+      makeAuthMock(null, { message: 'not authenticated' }) as unknown as MockSupabase
     )
 
-    const res = await GET(makeRequest())
+    const res = await GET()
 
     expect(res.status).toBe(401)
     const body = await res.json()
@@ -79,11 +76,11 @@ describe('GET /api/admin/saude-mkt', () => {
 
   it('returns 401 when user exists in auth but no usuarios row', async () => {
     mockCreateClient.mockResolvedValue(
-      makeAuthMock({ id: 'auth-user-1' }) as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never
+      makeAuthMock({ id: 'auth-user-1' }) as unknown as MockSupabase
     )
     mockGetCurrentUsuario.mockResolvedValue(null)
 
-    const res = await GET(makeRequest())
+    const res = await GET()
 
     expect(res.status).toBe(401)
     const body = await res.json()
@@ -92,11 +89,11 @@ describe('GET /api/admin/saude-mkt', () => {
 
   it('returns 403 for role=viewer', async () => {
     mockCreateClient.mockResolvedValue(
-      makeAuthMock({ id: 'user-3' }) as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never
+      makeAuthMock({ id: 'user-3' }) as unknown as MockSupabase
     )
     mockGetCurrentUsuario.mockResolvedValue(VIEWER)
 
-    const res = await GET(makeRequest())
+    const res = await GET()
 
     expect(res.status).toBe(403)
     const body = await res.json()
@@ -105,23 +102,23 @@ describe('GET /api/admin/saude-mkt', () => {
 
   it('returns 403 for role=manager (diagnostics is owner-only)', async () => {
     mockCreateClient.mockResolvedValue(
-      makeAuthMock({ id: 'user-2' }) as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never
+      makeAuthMock({ id: 'user-2' }) as unknown as MockSupabase
     )
     mockGetCurrentUsuario.mockResolvedValue(MANAGER)
 
-    const res = await GET(makeRequest())
+    const res = await GET()
 
     expect(res.status).toBe(403)
   })
 
   it('returns 200 with full JSON shape for role=owner', async () => {
     mockCreateClient.mockResolvedValue(
-      makeAuthMock({ id: 'user-1' }) as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never
+      makeAuthMock({ id: 'user-1' }) as unknown as MockSupabase
     )
     mockGetCurrentUsuario.mockResolvedValue(OWNER)
     mockBuildPayload.mockResolvedValue(MOCK_PAYLOAD)
 
-    const res = await GET(makeRequest())
+    const res = await GET()
 
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -136,12 +133,12 @@ describe('GET /api/admin/saude-mkt', () => {
 
   it('response JSON does not contain any PII field names (telefone, remotejid, nome, email)', async () => {
     mockCreateClient.mockResolvedValue(
-      makeAuthMock({ id: 'user-1' }) as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never
+      makeAuthMock({ id: 'user-1' }) as unknown as MockSupabase
     )
     mockGetCurrentUsuario.mockResolvedValue(OWNER)
     mockBuildPayload.mockResolvedValue(MOCK_PAYLOAD)
 
-    const res = await GET(makeRequest())
+    const res = await GET()
     const body = await res.json()
     const bodyStr = JSON.stringify(body)
 
@@ -153,24 +150,24 @@ describe('GET /api/admin/saude-mkt', () => {
 
   it('calls buildSaudeMktPayload with tenantId from DB usuario (never from request)', async () => {
     mockCreateClient.mockResolvedValue(
-      makeAuthMock({ id: 'user-1' }) as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never
+      makeAuthMock({ id: 'user-1' }) as unknown as MockSupabase
     )
     mockGetCurrentUsuario.mockResolvedValue(OWNER)
     mockBuildPayload.mockResolvedValue(MOCK_PAYLOAD)
 
-    await GET(makeRequest())
+    await GET()
 
     expect(mockBuildPayload).toHaveBeenCalledWith(OWNER.tenant_id)
   })
 
   it('returns 500 when buildSaudeMktPayload throws', async () => {
     mockCreateClient.mockResolvedValue(
-      makeAuthMock({ id: 'user-1' }) as ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never
+      makeAuthMock({ id: 'user-1' }) as unknown as MockSupabase
     )
     mockGetCurrentUsuario.mockResolvedValue(OWNER)
     mockBuildPayload.mockRejectedValue(new Error('DB connection lost'))
 
-    const res = await GET(makeRequest())
+    const res = await GET()
 
     expect(res.status).toBe(500)
     const body = await res.json()
