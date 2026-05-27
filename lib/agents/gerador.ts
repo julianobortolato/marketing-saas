@@ -25,11 +25,13 @@ export async function gerarPostSemanal(
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
   // 1. Contexto do tenant
-  const { data: config } = await supabaseAdmin
+  const { data: config, error: configError } = await supabaseAdmin
     .from('tenant_config')
     .select('brand_manual, logo_url')
     .eq('tenant_id', tenantId)
     .single()
+
+  if (configError) console.error('[gerador] tenant_config query error:', configError)
 
   if (!config?.brand_manual) {
     throw new Error(`brand_manual ausente para tenant ${tenantId}`)
