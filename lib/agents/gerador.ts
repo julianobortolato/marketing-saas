@@ -5,8 +5,6 @@ import { TEMPLATES, DIMENSOES } from '@/lib/render/templates'
 import { carregarFontes } from '@/lib/render/fonts'
 import type { TemplateSlots, FormatoTemplate } from '@/lib/render/templates/types'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
 const LOGO_PLACEHOLDER = 'https://via.placeholder.com/200x60/1A2E4A/F0EEE8?text=LOGO'
 
 export interface ResultadoGeracao {
@@ -24,6 +22,7 @@ export async function gerarPostSemanal(
   supabaseAdmin: SupabaseClient<any>,
   origin: string,
 ): Promise<ResultadoGeracao> {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
   // 1. Contexto do tenant
   const { data: config } = await supabaseAdmin
