@@ -19,6 +19,7 @@
     "@supabase/supabase-js": "^2.106.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
+    "@vercel/og": "^0.11.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "colorthief": "^3.3.1",
@@ -36,6 +37,10 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/lora": "^5.2.8",
+    "@fontsource/playfair-display": "^5.2.8",
+    "@fontsource/plus-jakarta-sans": "^5.2.8",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
