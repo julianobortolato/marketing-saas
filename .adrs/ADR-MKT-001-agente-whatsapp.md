@@ -453,8 +453,25 @@ Manifesto P6: regras invioláveis NÃO confiam em prompt. Validação em código
 | **Identidade** | LLM mencionou nome próprio que não é do lead | Regex de nomes (lista mantida em `academia_config`) → substitui por "a equipe" |
 | **Loop de tool-use** | Atingiu 5 iterações sem responder ao usuário | Fallback fixo: "Um momento, vou verificar isso com a equipe" + log alerta + handoff |
 | **Resposta vazia ou >1200 chars** | LLM respondeu vazio ou muito longo | Re-prompt com instrução de tamanho, máx 1 retry |
+| **Conversa degenerada** | N turnos consecutivos sem `salvar_perfil_lead` nem `consultar_disponibilidade_ae` | `handoff_humano(motivo='loop')` automático + notificação owner. N inicial = 5 turnos — ajustar com dados reais de campo. |
 
 **Implementação:** `lib/agents/guardrails.ts` exporta `applyGuardrails(response, context)` que retorna `{ texto, handoff_solicitado, motivo }`. Ordem importa — handoff curto-circuita demais.
+
+---
+
+## 9b. Score em modo passivo
+
+Score de lead (3 sinais × peso em `score_lead`) nunca foi testado em campo. Protocolo de ativação:
+
+```
+SCORE EM MODO PASSIVO:
+- Calcular e registrar em leads.score a cada turno (tool score_lead já faz isso)
+- NÃO usar score para decisão de handoff ou priorização por 30 dias após go-live
+- Revisar distribuição estatística após 30 dias antes de ativar qualquer automação baseada em score
+- Gatilho de ativação: P50 score > 5 E desvio padrão < 3 (sinal de que o modelo discrimina)
+```
+
+**Decisão registrada:** score é dado observável desde o primeiro turno, mas não é atuador de decisão no MVP.
 
 ---
 
@@ -499,6 +516,8 @@ Manifesto P6: regras invioláveis NÃO confiam em prompt. Validação em código
 □ HMAC inválido → 401 sem persistir nada
 □ Lead novo: primeira mensagem cria leads + conversas + chat_messages
 □ next build local passou sem erro de TS / ESLint
+□ Smoke test deploy evidence: após deploy, SELECT em ai_usage_log WHERE criado_em > NOW() - INTERVAL '5 min' retorna linhas
+□ Smoke test calls paralelas: forçar 2 tools no mesmo turno → ambas executam, ambas geram tool_result, sem erro 400
 □ Gate de contraste (anti-vazamento UNIC): criar tenant fictício
   "Academia Premium Vértice" em staging — tom formal (sem "bora!", sem
   emoji em mensagem pós-aceite), paleta azul-marinho/branco (não vermelho),

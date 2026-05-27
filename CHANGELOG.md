@@ -3,6 +3,27 @@
 All notable changes to this project are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com).
 
+## [2026-05-26] sprint-0-fundacao-segura — SHA 9984cf8
+
+### Added
+- `verifyWebhookSignature` migrado para Web Crypto API (async) — compatível com Edge Runtime
+- `export const runtime = 'edge'` em `/api/webhooks/evolution` e `/api/agents/cmo`
+- `/api/agents/cmo/route.ts` — path canônico do agente CMO (gradual rename)
+- `supabase/migrations/20260527000001_rename_academia_to_tenant.sql` — rename + view de compat (SUNSET Sprint 1)
+- `supabase/migrations/20260527000002_conversas_lgpd_aceito.sql` — `conversas.lgpd_aceito BOOLEAN`
+- `supabase/migrations/20260527000003_bridge_iara_v2.sql` — índice parcial `idx_tenants_iara_bridge`
+- Sentry `@sentry/nextjs` via `instrumentation.ts` (padrão Next.js 14 App Router)
+- Husky pre-commit: `npm run build` bloqueia commit com erro de tipo
+
+### Changed
+- `academia_config` → `tenant_config` em todo o código (grep-zero verificado)
+- `LGPD_aceito` movido para `conversas` (por conversa) em vez de `chat_messages` (por mensagem)
+- `next.config.js` agora usa `withSentryConfig` wrapper
+
+### Security
+- Edge Runtime elimina cold start e alinha com ADR-MKT-005 §3 (4 peças que viabilizam Evolution→Next.js direto)
+- HMAC via `crypto.subtle.verify` (constant-time) substitui `timingSafeEqual` de `node:crypto`
+
 ## [2026-05-26] docs-canonicos-prisma-v1 — SHA 2e12be2
 
 ### Added
