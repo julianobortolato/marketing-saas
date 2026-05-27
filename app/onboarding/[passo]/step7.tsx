@@ -8,38 +8,33 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { savePasso7 } from './actions'
 
-interface QRData { qrcode?: { base64?: string }; instance?: { state?: string } }
-
 export function Step7({ tenantSlug }: { tenantSlug: string }) {
   const router = useRouter()
   const [numero, setNumero] = useState('')
   const [loading, setLoading] = useState(false)
   const [qrUrl, setQrUrl] = useState<string | null>(null)
-  const [instanceName, setInstanceName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   async function handleCreate() {
     if (!numero.trim()) { setError('Informe o número'); return }
     setLoading(true); setError(null)
-    const name = `${tenantSlug}-${Date.now()}`
-    setInstanceName(name)
+    const instanceName = `${tenantSlug}-${Date.now()}`
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_EVOLUTION_API_URL}/instance/create`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', apikey: '' },
-          body: JSON.stringify({ instanceName: name, qrcode: true, number: numero.replace(/\D/g, '') }),
-        }
-      )
-      const json: QRData = await res.json()
-      if (json.qrcode?.base64) {
-        setQrUrl(`data:image/png;base64,${json.qrcode.base64}`)
+      const res = await fetch('/api/evolution/criar-instancia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instanceName, numero }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setError(json.error ?? 'Erro ao criar instância.')
+      } else if (json.qrBase64) {
+        setQrUrl(`data:image/png;base64,${json.qrBase64}`)
       } else {
         setError('QR code não recebido. Verifique o número e tente novamente.')
       }
     } catch {
-      setError('Não foi possível conectar à Evolution API. Configure depois em Configurações.')
+      setError('Não foi possível conectar. Tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -47,7 +42,7 @@ export function Step7({ tenantSlug }: { tenantSlug: string }) {
 
   async function handleConfirm() {
     setLoading(true)
-    const result = await savePasso7(instanceName || `${tenantSlug}-manual`, numero)
+    const result = await savePasso7()
     if (result.error) { setError(result.error); setLoading(false); return }
     router.push('/onboarding/8')
   }

@@ -143,23 +143,12 @@ export async function skipPasso6(): Promise<{ error?: string }> {
   return {}
 }
 
-// ── Passo 7: salvar instância Evolution ─────────────────────────────────────
-export async function savePasso7(instanceName: string, numero: string): Promise<{ error?: string }> {
+// ── Passo 7: avançar passo após conexão WhatsApp ─────────────────────────────
+// Instance creation + persistence is handled by /api/evolution/criar-instancia.
+// This action just advances the wizard step after the user confirms QR scan.
+export async function savePasso7(): Promise<{ error?: string }> {
   const usuario = await getCurrentUsuario()
   if (!usuario) return { error: 'não autenticado' }
-
-  const supabase = await createClient()
-  const { error } = await supabase.from('evolution_instances').upsert({
-    tenant_id: usuario.tenant_id,
-    instance_name: instanceName,
-    numero_whatsapp: numero,
-    api_key_encrypted: '',
-    webhook_secret: process.env.EVOLUTION_WEBHOOK_SECRET ?? '',
-    ativo: true,
-  }, { onConflict: 'instance_name' })
-
-  if (error) return { error: error.message }
-
   await advanceOnboardingPasso(usuario.tenant_id, 8)
   return {}
 }
