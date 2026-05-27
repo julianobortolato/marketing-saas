@@ -1,113 +1,97 @@
-# Handoff — Fase 4.3 + 4.4 concluídas
+# Handoff — Fases 4.3 + 4.4 + fix TS tests
 
 ## SHA base para próximo chat
-`6e856bc` — feat(fase4.4): galeria banco de imagens
+`22c86a3` — fix(tests): corrigir TS2352/TS2554 em test files do Sprint 0
 
 ## Status
 
-Fases 4.3 e 4.4 com aceite verde:
-- Build `next build` ✅ verde no SHA `6e856bc`
-- 7 blocos commitados, smoke tests passando
-- RLS dual confirmado nas 3 tabelas tocadas (`evolution_instances`, `tenant_config`, `banco_imagens`)
-- `NEXT_PUBLIC_EVOLUTION_*` removido do código e do `.env.local`
+Fases 4.3, 4.4 e fix de tsc com aceite verde:
+- `next build` ✅ verde
+- `tsc --noEmit` ✅ 0 erros
+- 7 blocos da Fase 4.3+4.4 commitados + 1 commit de fix de testes
 
-## O que foi entregue (por bloco)
+## Commits desta sessão (ordem cronológica)
 
-| Bloco | SHA | Entregável |
-|---|---|---|
-| 1+2 | `bdfec30` | `middleware.ts` protege `/onboarding/*` + tokens `--prisma-*` em `globals.css` (ADR-MKT-006) |
-| 3 | `46a3b0f` | `dashboard/layout.tsx` gate: `onboarding_passo < 9` → redirect `/onboarding/<passo>` |
-| 4 | `257cf1e` | Fix S-1/S-2/S-3: `/api/evolution/criar-instancia` server-side + AES-256-GCM para `api_key_encrypted` |
-| 5 | `7b12444` | `/dashboard/configuracoes/marca` — Manual de Marca editável (Zod por sub-seção, Option A) |
-| 6 | `dcb6532` | `/api/oauth/meta` + `/api/oauth/google` stubs → 501 |
-| 7 | `6e856bc` | `/dashboard/banco-imagens` — galeria com approve/reject + multi-select delete |
+| SHA | Entregável |
+|---|---|
+| `bdfec30` | middleware protege `/onboarding/*` + tokens `--prisma-*` (ADR-MKT-006) |
+| `46a3b0f` | `dashboard/layout.tsx` gate `onboarding_passo < 9` |
+| `257cf1e` | Fix S-1/S-2/S-3: `/api/evolution/criar-instancia` server-side + AES-256-GCM |
+| `7b12444` | `/dashboard/configuracoes/marca` — Manual de Marca editável |
+| `dcb6532` | OAuth stubs `/api/oauth/meta` + `/api/oauth/google` → 501 |
+| `6e856bc` | `/dashboard/banco-imagens` — galeria com approve/reject + multi-select |
+| `c9aaa74` | HANDOFF.md v1 |
+| `22c86a3` | fix(tests): TS2352/TS2554 nos dois test files do Sprint 0 |
 
-## Próxima tarefa: corrigir erros TypeScript em test files do Sprint 0
+## Fix de testes aplicado (documentação para próximo dev)
+
+**Padrão adotado:** `type MockSupabase = Awaited<ReturnType<typeof createClient>>`
+com double-cast `as unknown as MockSupabase` em vez do conditional type inline
+`as ReturnType<typeof import(...)> extends Promise<infer T> ? T : never`.
+
+**Arquivos corrigidos:**
+- `app/api/admin/saude-mkt/__tests__/route.test.ts`
+  - TS2352 × 8: cast para `as unknown as MockSupabase`
+  - TS2554 × 8: `GET(makeRequest())` → `GET()` (handler não tem parâmetro)
+  - Remove import `NextRequest` e helper `makeRequest()` não utilizados
+- `app/dashboard/configuracoes/editorial/__tests__/actions.test.ts`
+  - TS2352 × 4: cast para `as unknown as MockSupabase`
+
+## Próxima tarefa: Fase 5.1 — `/api/posts/render` + Satori
 
 ### Contexto
 
-`tsc --noEmit` retorna 20 erros, todos em dois arquivos de teste pré-existentes do Sprint 0.
-`next build` passa normalmente (test files excluídos do tsconfig de build).
-Não bloqueia deploy, mas deve ser corrigido antes de qualquer execução de testes.
+Fase 5 gera posts de imagem via Satori (HTML→PNG). ADR-MKT-003 documenta a decisão.
+A tabela `conteudos` foi criada na Fase 4 (schema mínimo) — Fase 5 adiciona templates.
 
-### Arquivos afetados
+### O que entra na Fase 5.1
 
-**Arquivo 1:** `app/api/admin/saude-mkt/__tests__/route.test.ts`
+- `/api/posts/render` — rota Node.js que recebe `conteudo_id`, busca dados do `conteudos`
+  + `brand_manual`, renderiza template Satori, retorna PNG
+- Template base fitness (componente React → `@vercel/og` / Satori)
+- Integração com `banco_imagens` para foto de fundo
+- Schema mínimo de `conteudos` já existe; Fase 5 adiciona `template`, `satori_html`
 
-- **TS2554 (8 ocorrências)** — linhas 73, 86, 99, 112, 124, 144, 161, 173:
-  `createClient` foi atualizado para não receber argumentos (`createClient()`), mas os testes
-  ainda chamam `mockCreateClient.mockResolvedValueOnce(mockSupabase as ...)` passando 1 argumento.
-  Fix: remover o argumento, ou ajustar o mock para `mockCreateClient.mockResolvedValue(mockSupabase as unknown as ...)`
+### Arquivos esperados na Fase 5.1
 
-- **TS2352 (8 ocorrências)** — linhas 70, 82, 95, 108, 119, 139, 156, 168:
-  O objeto mock `{ auth: { getUser: Mock<Procedure> } }` é castado para `SupabaseClient<...>`
-  mas não tem overlap suficiente. Fix: dobrar o cast → `as unknown as SupabaseClient<...>`
-
-**Arquivo 2:** `app/dashboard/configuracoes/editorial/__tests__/actions.test.ts`
-
-- **TS2352 (4 ocorrências)** — linhas 51, 65, 77, 90:
-  Objeto mock `{ from: Mock<Procedure>; rpc: Mock<Procedure> }` castado para `SupabaseClient<...>`.
-  Fix idêntico: `as unknown as SupabaseClient<...>`
-
-### Fix padrão (aplicar nos dois arquivos)
-
-```typescript
-// ANTES (quebra no tsc)
-mockCreateClient.mockResolvedValueOnce(mockSupabase as SupabaseClient<...>)
-
-// DEPOIS
-mockCreateClient.mockResolvedValueOnce(mockSupabase as unknown as SupabaseClient<...>)
+```
+app/api/posts/render/route.ts          ← Node.js runtime (Satori não roda em Edge)
+lib/satori/templates/base.tsx          ← template React → PNG
+lib/satori/render.ts                   ← wrapper Satori
+lib/queries/conteudos.ts               ← getConteudo(id), updateConteudo(...)
 ```
 
-e onde `createClient` é chamado com argumento:
+### Restrições da ADR-MKT-003 (ler antes de implementar)
 
-```typescript
-// ANTES
-mockCreateClient.mockResolvedValueOnce(algo as SupabaseClient<...>)
-// ou mockCreateClient.mockImplementation((arg) => ...)
-
-// DEPOIS (0 argumentos)
-mockCreateClient.mockResolvedValue(algo as unknown as SupabaseClient<...>)
-```
-
-### Instrução pro próximo chat
-
-1. Ler este HANDOFF.md
-2. Ler os dois arquivos de teste completos antes de editar
-3. Aplicar o fix de double-cast nos arquivos afetados
-4. Rodar `npx tsc --noEmit` — deve retornar 0 erros
-5. Rodar `npm run build` — deve continuar verde
-6. Commitar: `fix(tests): double-cast SupabaseClient mocks no tsc (Sprint 0)`
+- Satori: `runtime = 'nodejs'` (não Edge) — mesmo padrão do `/api/onboarding/logo`
+- Fontes: carregadas de `public/fonts/` via `fs.readFileSync` na rota (não no browser)
+- `--tenant-*` tokens injetados inline no template (não via CSS global)
+- Imagem do post usa `brand_manual.visual.cor_primaria` (não `--prisma-*`)
 
 ## Estado do .env.local — 3 vars pendentes do owner
 
-O seguinte NÃO está configurado ainda. Necessário antes de testar o passo 7 do wizard (WhatsApp):
+Necessário antes de testar passo 7 do wizard (WhatsApp):
 
 | Variável | Como gerar | Onde usar |
 |---|---|---|
-| `ENCRYPTION_KEY` | `openssl rand -hex 32` no terminal | Criptografia AES-256-GCM da api_key em `evolution_instances` |
-| `EVOLUTION_API_URL` | URL do servidor Evolution (ex: `http://seu-servidor:8080`) | `/api/evolution/criar-instancia` — sem `/api` no final |
-| `EVOLUTION_API_KEY` | Chave global do servidor Evolution (dashboard Evolution → API Key) | Idem acima |
+| `ENCRYPTION_KEY` | `openssl rand -hex 32` | AES-256-GCM em `evolution_instances.api_key_encrypted` |
+| `EVOLUTION_API_URL` | URL do servidor Evolution (ex: `http://servidor:8080`) | `/api/evolution/criar-instancia` |
+| `EVOLUTION_API_KEY` | Dashboard Evolution → API Key | Idem acima |
 
-Adicionar ao `.env.local` e no painel Vercel → Settings → Environment Variables.
+`NEXT_PUBLIC_EVOLUTION_API_URL` e `NEXT_PUBLIC_EVOLUTION_API_KEY`: remover do `.env.local` e Vercel.
 
-`NEXT_PUBLIC_EVOLUTION_API_URL` e `NEXT_PUBLIC_EVOLUTION_API_KEY` devem ser **removidas** do `.env.local` e da Vercel — não são mais usadas.
+## Decisões técnicas que afetam fases futuras
 
-## Decisões técnicas desta fase que afetam fases futuras
+1. **`savePasso7` sem argumentos** — instância salva pela rota `/api/evolution/criar-instancia`.
+   Se precisar de `instanceName` downstream, buscar em `evolution_instances` pelo `tenant_id`.
 
-1. **`savePasso7` agora não recebe argumentos** — a instância Evolution é salva pela rota
-   `/api/evolution/criar-instancia` antes de `savePasso7` ser chamado. Se alguma fase futura
-   precisar acessar `instanceName` no passo 7, buscar em `evolution_instances` pelo `tenant_id`.
+2. **`patchBrandManual` merge shallow** — Manual de Marca lê `brand_manual` atual antes de gravar
+   (`getBrandManual()` + spread). Qualquer feature que edite `brand_manual.visual` deve seguir
+   o mesmo padrão.
 
-2. **`patchBrandManual` continua com merge shallow** — Manual de Marca (4.3) contorna isso
-   lendo o `brand_manual` atual antes de gravar (`getBrandManual()` + spread). Qualquer nova
-   feature que edite `brand_manual.visual` deve seguir o mesmo padrão.
+3. **Banco de imagens usa signed URLs regeneradas em render** — `url_publica` no banco expira
+   em 1h. Galeria regenera via `getSignedUrl()` a cada request. Com >100 imagens, considerar
+   cache antes da Fase 5.
 
-3. **Banco de imagens usa signed URLs regeneradas em cada render** — `url_publica` armazenada
-   no banco expira em 1h (foi salva como signed URL no upload do onboarding). A galeria regenera
-   via `getSignedUrl()` a cada request. Se volume de imagens crescer (>100), considerar cache
-   ou CDN antes de Fase 5.
-
-4. **`globals.css` agora usa `--prisma-midnight` como `--primary`** — componentes Shadcn que
-   usam `bg-primary` / `text-primary` / `ring-ring` renderizam em midnight/purple. Revisar
-   visualmente antes do primeiro tenant real.
+4. **`globals.css` usa `--prisma-midnight` como `--primary`** — componentes Shadcn com
+   `bg-primary` renderizam em midnight. Revisar visualmente antes do primeiro tenant real.
