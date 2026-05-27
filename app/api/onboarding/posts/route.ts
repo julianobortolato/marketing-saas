@@ -11,8 +11,8 @@ import { getCurrentUsuario } from '@/lib/queries/usuario'
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 const FORMATOS = [
-  { formato: 'feed_1080',      label: 'Feed Instagram' },
-  { formato: 'story_1920',     label: 'Story' },
+  { formato: 'feed',           label: 'Feed Instagram' },
+  { formato: 'story',          label: 'Story' },
   { formato: 'carousel_slide', label: 'Carrossel' },
 ] as const
 
