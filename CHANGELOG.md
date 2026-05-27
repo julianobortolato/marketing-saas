@@ -3,6 +3,54 @@
 All notable changes to this project are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com).
 
+## [2026-05-27] Fase 5.1→5.4 — SHA 1125fbe
+
+### Added
+- Tabela `conteudos` (renomeada de `posts`) com RLS dual + indexes + trigger `fn_set_atualizado_em`
+- Tabela `prompts_agentes` com RLS, partial indexes e seed `gerador_copy v1` (engine scope)
+- Colunas `ia_pausado` e `owner_email` em `tenants`
+- FK `aprovacoes.referencia_id → conteudos.id`
+- 9 fontes estáticas WOFF/TTF em `public/fonts/` (Plus Jakarta Sans, Inter, Playfair Display, Bebas Neue, Lora)
+- `lib/render/fonts.ts` — helper `carregarFontes()` para Satori Edge Runtime
+- `lib/render/templates/` — 3 templates JSX clean/minimalista: feed (1080×1080), story (1080×1920), carousel (1080×1080)
+- `lib/render/templates/types.ts` — contrato `TemplateSlots` + `FormatoTemplate`
+- `lib/agents/gerador.ts` — pipeline GPT-4o: brand_manual → copy → seleção foto por tags → render → Storage → INSERT conteudos
+- `/api/posts/render` — rota Edge Runtime com `@vercel/og`, modos `html` (legado) e `template`
+- `/api/cron/gerar-posts` — Node Runtime, auth Bearer CRON_SECRET, loop multi-tenant, notificação Resend
+- `vercel.json` — cron toda segunda-feira 11:00 UTC (08:00 BRT)
+- Bucket `posts` no Supabase Storage (público, uploads protegidos por RLS)
+- `tests/smoke/render.sh` — validação magic bytes PNG + latência <10s
+- `tests/smoke/pipeline.sh` — validação auth 401 + pipeline 200
+
+### Changed
+- `/api/posts/render` estendido com `discriminatedUnion` — modo `template` com slots JSX
+- `getWeeklyOrganicBatch()` estendida com JOIN `conteudos` via `referencia_id`
+- `app/dashboard/aprovacoes/page.tsx` — tabela de IDs substituída por grid de `PostCard` com preview PNG + copy + ações individuais
+- `BatchApproval` mantido como ação de lote complementar
+
+### Fixed
+- `OpenAI` client movido do module scope para dentro de `gerarPostSemanal()` — corrige 500 em prod (module scope lançava antes de env var estar disponível)
+- `Resend` inicializado dentro do handler (mesmo padrão)
+- `.eq('aprovada', true)` em `banco_imagens` (não `ativo`)
+
+### Security
+- RLS RESTRICTIVE em `conteudos` e `prompts_agentes` com padrão canônico `TO authenticated + tenant_id IS NOT NULL AND`
+- Partial indexes em `prompts_agentes` para unicidade correta com NULL em `tenant_id`
+- Upload Storage em path `<tenant_id>/` — namespacing por tenant
+
+### Deprecated
+- `ADR-MKT-001-agente-whatsapp.md` — renomear para `ADR-MKT-001-DEPRECATED-agente-whatsapp.md` (débito Sprint 0, ainda pendente)
+
+---
+
+## Anti-padrões registrados nesta sessão
+
+- AP-RENDER-001: Variable fonts TTF do google/fonts causam TypeError no Satori 0.25.0 → usar WOFF estático via @fontsource
+- AP-RENDER-002: `{expressão} + texto` em JSX Satori gera dois filhos em div sem `display:flex` → concatenar em string
+- AP-RUNTIME-001: Instanciar clients de API (OpenAI, Resend) no module scope em Node/Edge Runtime → sempre dentro do handler
+
+---
+
 ## [2026-05-26] sprint-0-fundacao-segura — SHA 9984cf8
 
 ### Added
