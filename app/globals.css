@@ -4,56 +4,58 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;              /* #FFFFFF */
-    --foreground: 222 47% 11%;            /* #0F172A */
-    --card: 210 40% 98%;                  /* #F8FAFC */
-    --card-foreground: 222 47% 11%;
+    --background: 0 0% 100%;
+    --foreground: 215 48% 20%;            /* --prisma-midnight */
+    --card: 210 40% 98%;
+    --card-foreground: 215 48% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 354 95% 46%;               /* #E30613 — Fitness UNIC red */
+    --popover-foreground: 215 48% 20%;
+    --primary: 215 48% 20%;              /* Prisma midnight — ADR-MKT-006 */
     --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary-foreground: 215 48% 20%;
     --muted: 210 40% 98%;
-    --muted-foreground: 215 16% 47%;      /* #64748B */
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 72% 51%;             /* #DC2626 */
+    --muted-foreground: 215 16% 47%;
+    --accent: 262 45% 57%;               /* --prisma-purple */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;            /* --prisma-danger */
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;                /* #E2E8F0 */
+    --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 354 95% 46%;
+    --ring: 262 45% 57%;                 /* --prisma-purple for focus rings */
     --radius: 0.5rem;
 
-    /* Fitness UNIC semantic brand tokens */
-    --color-primary: #E30613;
-    --color-bg: #FFFFFF;
-    --color-surface: #F8FAFC;
-    --color-text: #0F172A;
-    --color-muted: #64748B;
-    --color-border: #E2E8F0;
+    /* Prisma Design System — ADR-MKT-006 */
+    --prisma-midnight: #1A2E4A;
+    --prisma-ivory:    #F0EEE8;
+    --prisma-purple:   #7B61C4;
+    --prisma-success:  #22C55E;
+    --prisma-danger:   #EF4444;
+    --prisma-warning:  #F59E0B;
+    --text-main:       #1A2E4A;
+    --text-muted:      #64748B;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 14%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 354 95% 46%;
-    --primary-foreground: 0 0% 100%;
+    --background: 215 48% 20%;
+    --foreground: 39 17% 91%;            /* --prisma-ivory */
+    --card: 215 48% 23%;
+    --card-foreground: 39 17% 91%;
+    --popover: 215 48% 20%;
+    --popover-foreground: 39 17% 91%;
+    --primary: 39 17% 91%;
+    --primary-foreground: 215 48% 20%;
     --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary-foreground: 39 17% 91%;
     --muted: 217 33% 17%;
     --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 262 45% 57%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 39 17% 91%;
     --border: 217 33% 17%;
     --input: 217 33% 17%;
-    --ring: 354 95% 46%;
+    --ring: 262 45% 57%;
   }
 }
 
