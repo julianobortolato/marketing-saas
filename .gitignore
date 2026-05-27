@@ -44,3 +44,4 @@ supabase/.temp/
 
 # claude worktrees
 .claude/worktrees/
+Prisma.html
