@@ -1,15 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUsuario } from '@/lib/queries/usuario'
+import { getTenant } from '@/lib/queries/tenant'
 import { AppShell } from '@/components/app-shell'
 
-/**
- * Dashboard route-group layout — Server Component.
- * Auth guard (defense-in-depth alongside middleware):
- * - Uses getUser() to revalidate session against the Supabase auth server on every request.
- * - Redirects to /login when no authenticated user.
- * Renders AppShell with role-aware sidebar for all /dashboard/* routes.
- */
 export default async function DashboardLayout({
   children,
 }: {
@@ -25,12 +19,19 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
-  const usuario = await getCurrentUsuario()
+  const [usuario, tenant] = await Promise.all([
+    getCurrentUsuario(),
+    getTenant(),
+  ])
 
   if (!usuario) {
-    // Auth user exists but no usuarios row — signout to clear session before /login,
-    // otherwise the middleware bounces back to /dashboard and creates a redirect loop.
     redirect('/api/auth/signout')
+  }
+
+  // Wizard gate: user must complete all 8 steps before accessing the dashboard.
+  // onboarding_passo >= 9 means the wizard was concluded (concludeOnboarding sets 9).
+  if (tenant && tenant.onboarding_passo < 9) {
+    redirect(`/onboarding/${Math.max(tenant.onboarding_passo, 1)}`)
   }
 
   return <AppShell usuario={usuario}>{children}</AppShell>
