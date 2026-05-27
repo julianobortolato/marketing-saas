@@ -2,15 +2,27 @@ import { ImageResponse } from '@vercel/og';
 import { type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { carregarFontes, FONTS_DISPONIVEIS, type FontFamily, type FontEntry } from '@/lib/render/fonts';
+import { SlotsSchema } from '@/lib/render/templates/types';
+import { TEMPLATES, DIMENSOES } from '@/lib/render/templates';
 
 export const runtime = 'edge';
 
-const RenderSchema = z.object({
-  html:    z.string().min(1).max(50_000),
-  largura: z.number().int().min(100).max(2160).default(1080),
-  altura:  z.number().int().min(100).max(2160).default(1080),
-  fontes:  z.array(z.enum(FONTS_DISPONIVEIS)).default(['Plus Jakarta Sans', 'Inter']),
-});
+const RenderSchema = z.discriminatedUnion('modo', [
+  // Modo legado — HTML string direto (mantém compatibilidade com smoke test original)
+  z.object({
+    modo:    z.literal('html'),
+    html:    z.string().min(1).max(50_000),
+    largura: z.number().int().min(100).max(2160).default(1080),
+    altura:  z.number().int().min(100).max(2160).default(1080),
+    fontes:  z.array(z.enum(FONTS_DISPONIVEIS)).default(['Plus Jakarta Sans', 'Inter']),
+  }),
+  // Modo template — slots + formato
+  z.object({
+    modo:    z.literal('template'),
+    formato: z.enum(['feed', 'story', 'carousel_slide']),
+    slots:   SlotsSchema,
+  }),
+]);
 
 export async function POST(req: NextRequest) {
   const inicio = Date.now();
@@ -30,35 +42,47 @@ export async function POST(req: NextRequest) {
 
   try {
     const renderPromise = (async () => {
-      const fontes: FontEntry[] = await carregarFontes(origem, body.fontes as FontFamily[]);
+      if (body.modo === 'html') {
+        const fontes: FontEntry[] = await carregarFontes(origem, body.fontes as FontFamily[]);
+        const img = new ImageResponse(
+          (
+            <div
+              style={{
+                width: body.largura,
+                height: body.altura,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#F0EEE8',
+                fontFamily: body.fontes[0],
+                fontSize: 48,
+                color: '#1A2E4A',
+              }}
+            >
+              {body.html}
+            </div>
+          ),
+          {
+            width: body.largura,
+            height: body.altura,
+            fonts: fontes,
+          },
+        );
+        return img.arrayBuffer();
+      }
 
-      // MVP: body.html é texto simples renderizado centralizado.
-      // Templates JSX completos com slots chegam na Fase 5.2.
+      // modo === 'template'
+      const familia = body.slots.fonte_familia ?? 'Plus Jakarta Sans';
+      const fontes: FontEntry[] = await carregarFontes(origem, [familia]);
+      const { largura, altura } = DIMENSOES[body.formato];
       const img = new ImageResponse(
-        (
-          <div
-            style={{
-              width: body.largura,
-              height: body.altura,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#F0EEE8',
-              fontFamily: body.fontes[0],
-              fontSize: 48,
-              color: '#1A2E4A',
-            }}
-          >
-            {body.html}
-          </div>
-        ),
+        TEMPLATES[body.formato](body.slots),
         {
-          width: body.largura,
-          height: body.altura,
+          width: largura,
+          height: altura,
           fonts: fontes,
         },
       );
-
       return img.arrayBuffer();
     })();
 
