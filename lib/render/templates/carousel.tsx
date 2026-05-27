@@ -62,7 +62,7 @@ export function TemplateCarousel(slots: TemplateSlots): JSX.Element {
               marginBottom: 24,
             }}
           >
-            {slots.cta} →
+            {slots.cta + ' →'}
           </div>
           <div style={{ display: 'flex', width: 180, height: 44, overflow: 'hidden' }}>
             <img

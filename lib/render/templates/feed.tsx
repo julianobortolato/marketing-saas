@@ -77,7 +77,7 @@ export function TemplateFeed(slots: TemplateSlots): JSX.Element {
               letterSpacing: '0.06em',
             }}
           >
-            {slots.cta} →
+            {slots.cta + ' →'}
           </div>
         </div>
       </div>
