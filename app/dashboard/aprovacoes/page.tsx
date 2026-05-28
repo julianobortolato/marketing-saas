@@ -1,14 +1,16 @@
-import { getWeeklyOrganicBatch } from '@/lib/queries/aprovacoes'
+import { getWeeklyOrganicBatch, getConteudosAprovados } from '@/lib/queries/aprovacoes'
 import { getCurrentUsuario } from '@/lib/queries/usuario'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { BatchApproval } from './batch-approval'
+import { DownloadButton } from './download-button'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AprovacoesPage() {
-  const [batch, usuario] = await Promise.all([
+  const [batch, aprovados, usuario] = await Promise.all([
     getWeeklyOrganicBatch(),
+    getConteudosAprovados(),
     getCurrentUsuario(),
   ])
 
@@ -82,6 +84,40 @@ export default async function AprovacoesPage() {
           </div>
         )}
       </div>
+
+      {/* Prontos para download */}
+      {aprovados.length > 0 && (
+        <div className="border-t border-[#E2E8F0] px-6 py-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[#0F172A] mb-3">
+            Prontos para baixar
+          </h2>
+          <p className="text-xs text-[#64748B] mb-4">
+            Baixe o ZIP, extraia e publique no Instagram manualmente.
+          </p>
+          <div className="space-y-2">
+            {aprovados.map((c) => (
+              <div
+                key={c.id}
+                className="flex items-center justify-between rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-mono text-xs text-[#64748B]">
+                    {c.id.slice(0, 8)}…
+                  </span>
+                  {c.copy_principal && (
+                    <span className="text-sm text-[#0F172A] line-clamp-1 max-w-md">
+                      {c.copy_principal}
+                    </span>
+                  )}
+                </div>
+                {role !== 'viewer' && (
+                  <DownloadButton conteudoId={c.id} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
