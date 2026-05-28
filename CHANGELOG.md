@@ -3,6 +3,17 @@
 All notable changes to this project are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com).
 
+## [2026-05-27] Fase 5 bugfix — SHA f339db1
+
+### Fixed
+- `tenant_config.logo_url` ausente: PostgREST retornava 400 → `config = null` → erro falso "brand_manual ausente" mesmo com coluna preenchida
+- `lib/agents/gerador.ts` — captura `configError` e loga via `console.error` para rastreabilidade em produção
+
+### Added
+- `supabase/migrations/20260527163000_tenant_config_logo_url.sql` — `ADD COLUMN IF NOT EXISTS logo_url TEXT` em `tenant_config`
+
+---
+
 ## [2026-05-27] Fase 5.1→5.4 — SHA 1125fbe
 
 ### Added
