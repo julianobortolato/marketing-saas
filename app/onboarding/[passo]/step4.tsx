@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -26,10 +26,10 @@ export function Step4({ brandManual }: { brandManual: BrandManual }) {
   const [pfInput, setPfInput] = useState('')
   const [paInput, setPaInput] = useState('')
 
-  const { register, handleSubmit, control, watch, setValue, formState: { errors, isSubmitting } } = useForm<Passo4Input>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<Passo4Input>({
     resolver: zodResolver(passo4Schema),
     defaultValues: {
-      tom: (brandManual.tom_de_voz?.tom as Passo4Input['tom']) ?? 'neutro',
+      tom: (['formal', 'neutro', 'coloquial'].includes(brandManual.tom_de_voz?.tom ?? '') ? brandManual.tom_de_voz!.tom as Passo4Input['tom'] : 'neutro'),
       publico_descricao: brandManual.publico_alvo?.descricao ?? '',
       diferencial: brandManual.publico_alvo?.diferencial ?? '',
       temas: brandManual.tom_de_voz?.temas_recorrentes ?? [],
@@ -39,12 +39,14 @@ export function Step4({ brandManual }: { brandManual: BrandManual }) {
     },
   })
 
+  const tom = watch('tom')
   const temas = watch('temas')
+  const frequencia = watch('frequencia')
   const prefList = watch('palavras_preferidas')
   const evitarList = watch('palavras_a_evitar')
 
   function toggleTema(t: string) {
-    setValue('temas', temas.includes(t) ? temas.filter(x => x !== t) : [...temas, t])
+    setValue('temas', temas.includes(t) ? temas.filter(x => x !== t) : [...temas, t], { shouldValidate: true, shouldDirty: true })
   }
 
   function addTag(list: string[], val: string, field: 'palavras_preferidas' | 'palavras_a_evitar') {
@@ -69,16 +71,16 @@ export function Step4({ brandManual }: { brandManual: BrandManual }) {
       {/* Tom */}
       <div className="space-y-2">
         <Label>Tom de voz</Label>
-        <Controller name="tom" control={control} render={({ field }) => (
-          <div className="flex gap-2">
-            {(['formal','neutro','coloquial'] as const).map(t => (
-              <button type="button" key={t} onClick={() => field.onChange(t)}
-                className={`flex-1 rounded-lg border-2 py-2 text-sm font-medium capitalize transition ${field.value === t ? 'border-[#1A2E4A] bg-[#1A2E4A] text-white' : 'border-[#E2E8F0] text-[#1A2E4A] hover:border-[#1A2E4A]/40'}`}>
-                {t}
-              </button>
-            ))}
-          </div>
-        )} />
+        <div className="flex gap-2">
+          {(['formal','neutro','coloquial'] as const).map(t => (
+            <button type="button" key={t}
+              onClick={() => setValue('tom', t, { shouldValidate: true, shouldDirty: true })}
+              className={`flex-1 rounded-lg border-2 py-2 text-sm font-medium capitalize transition ${tom === t ? 'border-[#1A2E4A] bg-[#1A2E4A] text-white' : 'border-[#E2E8F0] text-[#1A2E4A] hover:border-[#1A2E4A]/40'}`}>
+              {t}
+            </button>
+          ))}
+        </div>
+        {errors.tom && <p className="text-sm text-red-500">{errors.tom.message}</p>}
       </div>
 
       {/* Público */}
@@ -112,16 +114,15 @@ export function Step4({ brandManual }: { brandManual: BrandManual }) {
       {/* Frequência */}
       <div className="space-y-2">
         <Label>Frequência de posts</Label>
-        <Controller name="frequencia" control={control} render={({ field }) => (
-          <div className="flex flex-wrap gap-2">
-            {FREQ_OPTIONS.map(f => (
-              <button type="button" key={f.value} onClick={() => field.onChange(f.value)}
-                className={`rounded-lg border-2 px-4 py-2 text-sm font-medium transition ${field.value === f.value ? 'border-[#1A2E4A] bg-[#1A2E4A] text-white' : 'border-[#E2E8F0] text-[#1A2E4A] hover:border-[#1A2E4A]/40'}`}>
-                {f.label}
-              </button>
-            ))}
-          </div>
-        )} />
+        <div className="flex flex-wrap gap-2">
+          {FREQ_OPTIONS.map(f => (
+            <button type="button" key={f.value}
+              onClick={() => setValue('frequencia', f.value as Passo4Input['frequencia'], { shouldValidate: true, shouldDirty: true })}
+              className={`rounded-lg border-2 px-4 py-2 text-sm font-medium transition ${frequencia === f.value ? 'border-[#1A2E4A] bg-[#1A2E4A] text-white' : 'border-[#E2E8F0] text-[#1A2E4A] hover:border-[#1A2E4A]/40'}`}>
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Palavras preferidas */}
