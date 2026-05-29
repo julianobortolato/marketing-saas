@@ -57,9 +57,19 @@ export async function POST(req: NextRequest) {
   try {
     const raw = await ColorThief.getPalette(tmpPath, 5)
     if (Array.isArray(raw)) {
-      paletteHex = (raw as number[][]).map((color) =>
-        rgbToHex(color[0], color[1], color[2])
-      )
+      paletteHex = raw
+        .filter((color: unknown) => color != null)
+        .map((color: unknown) => {
+          if (Array.isArray(color) && color.length >= 3) {
+            return rgbToHex(color[0], color[1], color[2])
+          }
+          if (typeof color === 'object' && color !== null && 'r' in color) {
+            const c = color as { r: number; g: number; b: number }
+            return rgbToHex(c.r, c.g, c.b)
+          }
+          return null
+        })
+        .filter((hex: unknown): hex is string => hex !== null)
     }
   } finally {
     await fs.unlink(tmpPath).catch(() => null)
