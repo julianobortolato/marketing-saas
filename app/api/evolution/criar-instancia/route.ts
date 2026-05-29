@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
         apikey: apiKey,
       },
-      body: JSON.stringify({ instanceName, qrcode: true, number: numeroLimpo }),
+      body: JSON.stringify({ instanceName, integration: 'WHATSAPP-BAILEYS', qrcode: true, number: numeroLimpo }),
     })
 
     if (!res.ok) {
