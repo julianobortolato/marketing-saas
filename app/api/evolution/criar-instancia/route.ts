@@ -67,7 +67,10 @@ export async function POST(req: NextRequest) {
     }
 
     const json = await res.json()
-    qrBase64 = json?.qrcode?.base64 ?? null
+    const raw: string | null = json?.qrcode?.base64 ?? null
+    // Evolution Baileys sometimes returns the full data URI — strip the prefix so the
+    // caller always gets raw base64 and can build the src without double-prefixing.
+    qrBase64 = raw?.replace(/^data:[^;]+;base64,/, '') ?? null
   } catch (err) {
     console.error('[criar-instancia] fetch error', err)
     return NextResponse.json(
