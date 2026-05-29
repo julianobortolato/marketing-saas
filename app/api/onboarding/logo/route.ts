@@ -4,16 +4,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import * as fs from 'fs/promises'
 import * as path from 'path'
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const ColorThief = require('colorthief')
+import { Vibrant } from 'node-vibrant/node'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { analyzeLogoVision } from '@/lib/openai/vision-logo'
 import { getCurrentUsuario } from '@/lib/queries/usuario'
-
-function rgbToHex(r: number, g: number, b: number): string {
-  return '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')
-}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -49,28 +44,16 @@ export async function POST(req: NextRequest) {
   if (uploadError)
     return NextResponse.json({ error: 'upload falhou: ' + uploadError.message }, { status: 500 })
 
-  // colorthief: write to /tmp, extract palette, cleanup
+  // node-vibrant: write to /tmp, extract palette, cleanup
   const tmpPath = path.join('/tmp', `logo-${uuid}.${ext}`)
   await fs.writeFile(tmpPath, buffer)
 
   let paletteHex: string[] = []
   try {
-    const raw = await ColorThief.getPalette(tmpPath, 5)
-    if (Array.isArray(raw)) {
-      paletteHex = raw
-        .filter((color: unknown) => color != null)
-        .map((color: unknown) => {
-          if (Array.isArray(color) && color.length >= 3) {
-            return rgbToHex(color[0], color[1], color[2])
-          }
-          if (typeof color === 'object' && color !== null && 'r' in color) {
-            const c = color as { r: number; g: number; b: number }
-            return rgbToHex(c.r, c.g, c.b)
-          }
-          return null
-        })
-        .filter((hex: unknown): hex is string => hex !== null)
-    }
+    const palette = await Vibrant.from(tmpPath).getPalette()
+    paletteHex = Object.values(palette)
+      .filter(Boolean)
+      .map(swatch => swatch!.hex)
   } finally {
     await fs.unlink(tmpPath).catch(() => null)
   }
