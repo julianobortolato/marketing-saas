@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -26,7 +26,7 @@ export function Step4({ brandManual }: { brandManual: BrandManual }) {
   const [pfInput, setPfInput] = useState('')
   const [paInput, setPaInput] = useState('')
 
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<Passo4Input>({
+  const { handleSubmit, watch, setValue, control, formState: { errors, isSubmitting } } = useForm<Passo4Input>({
     resolver: zodResolver(passo4Schema),
     defaultValues: {
       tom: (['formal', 'neutro', 'coloquial'].includes(brandManual.tom_de_voz?.tom ?? '') ? brandManual.tom_de_voz!.tom as Passo4Input['tom'] : 'neutro'),
@@ -86,14 +86,26 @@ export function Step4({ brandManual }: { brandManual: BrandManual }) {
       {/* Público */}
       <div className="space-y-1.5">
         <Label htmlFor="publico">Público-alvo</Label>
-        <Textarea id="publico" rows={2} placeholder="Ex: Mulheres 25-40 que buscam emagrecimento e qualidade de vida" {...register('publico_descricao')} />
+        <Controller
+          control={control}
+          name="publico_descricao"
+          render={({ field }) => (
+            <Textarea id="publico" rows={2} placeholder="Ex: Mulheres 25-40 que buscam emagrecimento e qualidade de vida" {...field} />
+          )}
+        />
         {errors.publico_descricao && <p className="text-sm text-red-500">{errors.publico_descricao.message}</p>}
       </div>
 
       {/* Diferencial */}
       <div className="space-y-1.5">
         <Label htmlFor="diferencial">Diferencial da empresa</Label>
-        <Textarea id="diferencial" rows={2} placeholder="Ex: Único estúdio de pilates com avaliação postural grátis na cidade" {...register('diferencial')} />
+        <Controller
+          control={control}
+          name="diferencial"
+          render={({ field }) => (
+            <Textarea id="diferencial" rows={2} placeholder="Ex: Único estúdio de pilates com avaliação postural grátis na cidade" {...field} />
+          )}
+        />
         {errors.diferencial && <p className="text-sm text-red-500">{errors.diferencial.message}</p>}
       </div>
 
