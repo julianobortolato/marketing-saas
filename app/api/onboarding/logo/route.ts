@@ -55,8 +55,12 @@ export async function POST(req: NextRequest) {
 
   let paletteHex: string[] = []
   try {
-    const raw = await ColorThief.getPalette(tmpPath, 5) as number[][]
-    paletteHex = raw.map(([r, g, b]) => rgbToHex(r, g, b))
+    const raw = await ColorThief.getPalette(tmpPath, 5)
+    if (Array.isArray(raw)) {
+      paletteHex = (raw as number[][]).map((color) =>
+        rgbToHex(color[0], color[1], color[2])
+      )
+    }
   } finally {
     await fs.unlink(tmpPath).catch(() => null)
   }
