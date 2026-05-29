@@ -35,6 +35,8 @@ export function Step5({ vertical }: { vertical: string }) {
       const json = await res.json()
       if (!res.ok) { setError(json.error ?? 'Erro no upload'); return }
       setImages(prev => [...prev, ...json.images])
+    } catch {
+      setError('Falha na conexão. Verifique sua internet e tente novamente.')
     } finally { setUploading(false) }
   }
 
