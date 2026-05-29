@@ -27,7 +27,7 @@ export async function gerarPostSemanal(
   // 1. Contexto do tenant
   const { data: config, error: configError } = await supabaseAdmin
     .from('tenant_config')
-    .select('brand_manual, logo_url')
+    .select('brand_manual')
     .eq('tenant_id', tenantId)
     .single()
 
@@ -123,17 +123,14 @@ export async function gerarPostSemanal(
   }
 
   // 7. Render direto (sem HTTP roundtrip — Node Runtime permite import direto)
+  const bm = config.brand_manual as Record<string, Record<string, string>> | null
   const slots: TemplateSlots = {
     foto_url: fotoUrl,
     copy_principal: gerado.copy_principal,
     cta: gerado.cta,
-    logo_url: config.logo_url || LOGO_PLACEHOLDER,
-    cor_primaria:
-      (config.brand_manual as Record<string, Record<string, string>>)
-        ?.identidade_visual?.cor_primaria ?? '#7B61C4',
-    fonte_familia:
-      (config.brand_manual as Record<string, Record<string, string>>)
-        ?.identidade_visual?.fonte_familia as TemplateSlots['fonte_familia'],
+    logo_url: bm?.visual?.logo_url || LOGO_PLACEHOLDER,
+    cor_primaria: bm?.visual?.cor_primaria ?? '#7B61C4',
+    fonte_familia: bm?.visual?.fonte_titulo as TemplateSlots['fonte_familia'],
     hashtags: (gerado.hashtags ?? []).slice(0, 5),
   }
 

@@ -39,6 +39,8 @@ export function Step3({ brandManual }: { brandManual: BrandManual }) {
       setFonteSugerida(json.analysis?.fonte_sugerida ?? 'Inter')
       if (coresNomeadas.length > 0) setPrimary(coresNomeadas[0].hex)
       if (coresNomeadas.length > 1) setSecondary(coresNomeadas[1].hex)
+    } catch {
+      setError('Falha na conexão. Verifique sua internet e tente novamente.')
     } finally { setUploading(false) }
   }
 
