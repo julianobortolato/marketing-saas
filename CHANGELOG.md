@@ -3,6 +3,62 @@
 All notable changes to this project are documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com).
 
+## [2026-05-29] fix-onboarding-validacao (2/2) — SHA 283c0e7
+
+### Fixed
+- `app/onboarding/[passo]/step4.tsx`: campos `publico_descricao` e `diferencial` usavam `{...register()}` com `Textarea` sem `React.forwardRef` — em React 18, `ref` é interceptado pelo React antes de chegar ao componente; `reValidateMode: 'onChange'` não disparava após submit; substituídos por `Controller` (modo controlado `value`+`onChange`, sem dependência de ref)
+
+---
+
+## [2026-05-29] fix-onboarding-validacao (1/2) — SHA 9204260
+
+### Fixed
+- `app/onboarding/[passo]/step1.tsx`: campo `nome_dono` ausente de `defaultValues` — iniciava como `undefined`; Zod emitia "Required" no submit sem o campo ter sido tocado
+- `app/onboarding/[passo]/step4.tsx`: `frequencia` defaultValue usava `as EnumType` sem runtime check — se banco enviasse valor fora do enum (ex: `'mensal'`), form iniciava inválido silenciosamente; substituído por whitelist explícita `['diaria','3x_semana','semanal','quinzenal'].includes(val ?? '') ? val : '3x_semana'`
+- `app/onboarding/[passo]/step4.tsx`: `errors.frequencia` nunca renderizado na UI — falha de validação era completamente silenciosa para o usuário
+- `app/onboarding/[passo]/step4.tsx`: `addTag` em `palavras_preferidas`/`palavras_a_evitar` usava `setValue` sem `{ shouldValidate: true, shouldDirty: true }` — erro persistia após adicionar/remover tag mesmo com valor válido
+
+---
+
+## [2026-05-29] fix-onboarding-logo-step4 — SHA 9005b42
+
+### Changed
+- `app/api/onboarding/logo/route.ts`: substituiu `colorthief` por `node-vibrant` (`import { Vibrant } from 'node-vibrant/node'`) — colorthief retornava formato inconsistente no Node.js runtime; palette agora vem de `Object.values(palette).filter(Boolean).map(s => s.hex)`
+
+### Fixed
+- `app/api/onboarding/logo/route.ts`: `ColorThief.getPalette` podia retornar `null` ou objetos `{r,g,b}` em vez de arrays `[r,g,b]` — causava `TypeError: object is not iterable` (Symbol.iterator) e `TypeError: Cannot read properties of undefined (reading 'toString')`
+- `app/onboarding/[passo]/step4.tsx`: campo `tom` não atualizava o estado do formulário após clique — `Controller`+`field.onChange` não re-validava em `mode: 'onSubmit'`; substituído por `setValue('tom', t, { shouldValidate: true, shouldDirty: true })` + `watch('tom')`
+- `app/onboarding/[passo]/step4.tsx`: `defaultValues.tom` aceitava string inválida do banco (ex: `''`) via cast `as EnumType` — substituído por whitelist explícita `['formal','neutro','coloquial'].includes(val) ? val : 'neutro'`
+- `app/onboarding/[passo]/step4.tsx`: `errors.tom` nunca exibido na UI (display ausente) — adicionado `{errors.tom && <p>{errors.tom.message}</p>}`
+- `app/onboarding/[passo]/step4.tsx`: `toggleTema` usava `setValue` sem `{ shouldValidate: true }` — erro "Selecione ao menos 1 tema" persistia mesmo após clicar
+
+### Added
+- `node-vibrant@^4.0.4` em `package.json`
+
+---
+
+## [2026-05-29] diagnostico-autonomo — SHA a4bb823
+
+### Fixed
+- `lib/agents/gerador.ts`: paths `brand_manual.identidade_visual.*` eram inválidos — JSONB usa `brand_manual.visual.*`. Posts gerados usavam cor #7B61C4, fonte Plus Jakarta Sans e logo placeholder em vez da identidade do tenant
+- `lib/agents/gerador.ts`: removida seleção da coluna `logo_url` de `tenant_config` (coluna existe mas nunca foi escrita); logo agora lida de `brand_manual.visual.logo_url`
+- `app/onboarding/[passo]/step3.tsx`: `try/finally` sem `catch` em `handleFile` silenciava erros de rede — upload falhava sem feedback ao usuário
+- `app/onboarding/[passo]/step5.tsx`: mesmo padrão `try/finally` sem `catch` em `handleFiles` corrigido
+
+---
+
+## [2026-05-28] webhook-zernio-registro — SHA de48ba8
+
+### Fixed
+- `app/api/webhooks/zernio/route.ts`: campo `postId` estava errado — payload real do Zernio usa `payload.post.id` (aninhado), não `payload.postId` (top-level). Causaria `400 missing_postId` em 100% dos callbacks reais
+- `app/api/webhooks/zernio/route.ts`: campo `reason` em `post.failed` não existe no top-level — coletado de `post.platforms[].error` e concatenado com `join('; ')`
+
+### Added
+- `ZERNIO_WEBHOOK_SECRET` gerado e salvo em `.env.local` (`openssl rand -hex 32`)
+- Webhook registrado no Zernio via `POST /v1/webhooks/settings` — ID `6a189ee88fd02c0071c7d8a5`, eventos `post.published` + `post.failed`, URL produção Vercel
+
+---
+
 ## [2026-05-27] Fase 5 bugfix — SHA f339db1
 
 ### Fixed

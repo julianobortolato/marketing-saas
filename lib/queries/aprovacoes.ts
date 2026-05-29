@@ -15,6 +15,14 @@ export interface ConteudoAprovado {
   criado_em: string
 }
 
+export interface ConteudoAgendado {
+  id: string
+  copy_principal: string | null
+  agendado_para: string | null
+  zernio_post_id: string | null
+  criado_em: string
+}
+
 /**
  * Returns the current tenant's pending organic-content approvals from the last 7 days,
  * capped at 10 (the weekly batch limit, APROV-01).
@@ -67,4 +75,30 @@ export async function getConteudosAprovados(): Promise<ConteudoAprovado[]> {
   }
 
   return (data ?? []) as ConteudoAprovado[]
+}
+
+/**
+ * Returns conteudos with status='agendado' from the last 30 days.
+ * RLS (RESTRICTIVE) scopes rows to the authenticated tenant.
+ * Never throws; returns [] on error.
+ */
+export async function getConteudosAgendados(): Promise<ConteudoAgendado[]> {
+  const supabase = await createClient()
+
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data, error } = await supabase
+    .from('conteudos')
+    .select('id, copy_principal, agendado_para, zernio_post_id, criado_em')
+    .eq('status', 'agendado')
+    .gte('criado_em', thirtyDaysAgo)
+    .order('agendado_para', { ascending: true })
+    .limit(10)
+
+  if (error) {
+    console.error('[getConteudosAgendados] error:', error.message)
+    return []
+  }
+
+  return (data ?? []) as ConteudoAgendado[]
 }
