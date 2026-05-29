@@ -19,6 +19,7 @@ export function Step1({ tenant }: { tenant: TenantRow }) {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Passo1Input>({
     resolver: zodResolver(passo1Schema),
     defaultValues: {
+      nome_dono: '',
       nome_empresa: tenant.nome,
       cidade: tenant.cidade ?? '',
       whatsapp: tenant.whatsapp_owner ?? '',

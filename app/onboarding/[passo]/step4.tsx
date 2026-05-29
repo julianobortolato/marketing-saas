@@ -33,7 +33,7 @@ export function Step4({ brandManual }: { brandManual: BrandManual }) {
       publico_descricao: brandManual.publico_alvo?.descricao ?? '',
       diferencial: brandManual.publico_alvo?.diferencial ?? '',
       temas: brandManual.tom_de_voz?.temas_recorrentes ?? [],
-      frequencia: (brandManual.tom_de_voz?.frequencia as Passo4Input['frequencia']) ?? '3x_semana',
+      frequencia: (['diaria', '3x_semana', 'semanal', 'quinzenal'].includes(brandManual.tom_de_voz?.frequencia ?? '') ? brandManual.tom_de_voz!.frequencia as Passo4Input['frequencia'] : '3x_semana'),
       palavras_preferidas: brandManual.tom_de_voz?.palavras_preferidas ?? [],
       palavras_a_evitar: brandManual.tom_de_voz?.palavras_a_evitar ?? [],
     },
@@ -51,7 +51,7 @@ export function Step4({ brandManual }: { brandManual: BrandManual }) {
 
   function addTag(list: string[], val: string, field: 'palavras_preferidas' | 'palavras_a_evitar') {
     const trimmed = val.trim()
-    if (trimmed && !list.includes(trimmed)) setValue(field, [...list, trimmed])
+    if (trimmed && !list.includes(trimmed)) setValue(field, [...list, trimmed], { shouldValidate: true, shouldDirty: true })
   }
 
   async function onSubmit(data: Passo4Input) {
@@ -123,6 +123,7 @@ export function Step4({ brandManual }: { brandManual: BrandManual }) {
             </button>
           ))}
         </div>
+        {errors.frequencia && <p className="text-sm text-red-500">{errors.frequencia.message}</p>}
       </div>
 
       {/* Palavras preferidas */}
@@ -132,7 +133,7 @@ export function Step4({ brandManual }: { brandManual: BrandManual }) {
           <input value={pfInput} onChange={e => setPfInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(prefList, pfInput, 'palavras_preferidas'); setPfInput('') }}}
             placeholder="Ex: Você consegue! — Enter para adicionar" className="flex-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none focus:border-[#1A2E4A]" />
         </div>
-        <div className="flex flex-wrap gap-1">{prefList.map(w => <span key={w} onClick={() => setValue('palavras_preferidas', prefList.filter(x => x !== w))} className="cursor-pointer rounded-full bg-[#1A2E4A]/10 px-2 py-0.5 text-xs text-[#1A2E4A]">{w} ×</span>)}</div>
+        <div className="flex flex-wrap gap-1">{prefList.map(w => <span key={w} onClick={() => setValue('palavras_preferidas', prefList.filter(x => x !== w), { shouldValidate: true, shouldDirty: true })} className="cursor-pointer rounded-full bg-[#1A2E4A]/10 px-2 py-0.5 text-xs text-[#1A2E4A]">{w} ×</span>)}</div>
       </div>
 
       {/* Palavras a evitar */}
@@ -142,7 +143,7 @@ export function Step4({ brandManual }: { brandManual: BrandManual }) {
           <input value={paInput} onChange={e => setPaInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(evitarList, paInput, 'palavras_a_evitar'); setPaInput('') }}}
             placeholder="Enter para adicionar" className="flex-1 rounded-lg border border-[#E2E8F0] px-3 py-2 text-sm outline-none focus:border-[#1A2E4A]" />
         </div>
-        <div className="flex flex-wrap gap-1">{evitarList.map(w => <span key={w} onClick={() => setValue('palavras_a_evitar', evitarList.filter(x => x !== w))} className="cursor-pointer rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">{w} ×</span>)}</div>
+        <div className="flex flex-wrap gap-1">{evitarList.map(w => <span key={w} onClick={() => setValue('palavras_a_evitar', evitarList.filter(x => x !== w), { shouldValidate: true, shouldDirty: true })} className="cursor-pointer rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">{w} ×</span>)}</div>
       </div>
 
       {serverError && <p className="text-sm text-red-500">{serverError}</p>}
